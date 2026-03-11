@@ -231,6 +231,57 @@ tr:hover td { background: var(--surface2); }
 }
 .dismiss-btn:hover { color: var(--text); }
 
+/* ── EDIT / DELETE ── */
+.row-actions { display: flex; gap: 6px; align-items: center; }
+.row-btn {
+  padding: 3px 10px; border-radius: 6px; border: 1px solid var(--border2);
+  font-size: 11px; font-weight: 600; cursor: pointer; background: none;
+  color: var(--muted2); font-family: var(--head); transition: all 0.15s; white-space: nowrap;
+}
+.row-btn:hover { background: var(--surface3); color: var(--text); }
+.row-btn.del { border-color: rgba(240,64,96,0.3); color: rgba(240,64,96,0.7); }
+.row-btn.del:hover { background: rgba(240,64,96,0.1); color: var(--danger); }
+.row-btn.edit { border-color: rgba(56,197,240,0.3); color: rgba(56,197,240,0.7); }
+.row-btn.edit:hover { background: rgba(56,197,240,0.08); color: var(--water); }
+
+/* ── MODAL ── */
+.modal-bg {
+  position: fixed; inset: 0; background: rgba(8,12,16,0.85); backdrop-filter: blur(6px);
+  z-index: 500; display: flex; align-items: center; justify-content: center;
+  animation: fadeIn 0.2s ease both;
+}
+.modal {
+  background: var(--surface2); border: 1px solid var(--border2); border-radius: 16px;
+  padding: 28px; width: 460px; max-width: 95vw;
+  animation: scaleIn 0.25s cubic-bezier(0.34,1.56,0.64,1) both;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+}
+.modal h2 { font-family: var(--head); font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+.modal .modal-sub { font-size: 12px; color: var(--muted2); margin-bottom: 20px; font-family: var(--head); }
+.modal-form { display: flex; flex-direction: column; gap: 12px; }
+.modal-footer { display: flex; gap: 10px; margin-top: 20px; }
+.m-btn {
+  flex: 1; padding: 10px; border-radius: 8px; font-family: var(--head);
+  font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.15s;
+}
+.m-btn.cancel { background: none; border: 1px solid var(--border2); color: var(--muted2); }
+.m-btn.cancel:hover { background: var(--surface3); color: var(--text); }
+.m-btn.confirm { background: var(--water); border: none; color: var(--bg); }
+.m-btn.confirm:hover { opacity: 0.85; }
+.m-btn.danger { background: var(--danger); border: none; color: white; }
+.m-btn.danger:hover { opacity: 0.85; }
+
+/* ── VALIDATION ── */
+.field-error { font-size: 11px; color: var(--danger); margin-top: 3px; display: none; font-weight: 500; }
+.field-error.show { display: block; }
+input.invalid { border-color: var(--danger) !important; }
+input.valid { border-color: var(--ok) !important; }
+.input-hint { font-size: 11px; color: var(--muted2); margin-top: 3px; font-family: var(--head); }
+
+@keyframes fadeIn  { from { opacity:0; } to { opacity:1; } }
+@keyframes scaleIn { from { opacity:0; transform:scale(0.93); } to { opacity:1; transform:scale(1); } }
+@keyframes shake   { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-6px)} 40%,80%{transform:translateX(6px)} }
+
 /* ── COST PANEL ── */
 .cost-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
 .cost-card {
@@ -258,6 +309,59 @@ tr:hover td { background: var(--surface2); }
 .toast.ok { border-color: rgba(56,240,160,0.4); color: var(--ok); }
 .toast.warn { border-color: rgba(240,192,64,0.4); color: var(--warn); }
 .toast.danger { border-color: rgba(240,64,96,0.4); color: var(--danger); }
+
+/* ── EDIT / DELETE MODALS ── */
+.modal-bg {
+  position: fixed; inset: 0; background: rgba(8,12,16,0.88); backdrop-filter: blur(5px);
+  z-index: 500; display: flex; align-items: center; justify-content: center;
+  animation: fadeIn 0.2s ease both;
+}
+.modal {
+  background: var(--surface2); border: 1px solid var(--border2); border-radius: 16px;
+  padding: 28px; width: 460px; max-width: 95vw;
+  animation: scaleIn 0.25s cubic-bezier(0.34,1.56,0.64,1) both;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+}
+.modal h2 { font-family: var(--head); font-size: 16px; margin-bottom: 4px; }
+.modal-sub { font-size: 11px; color: var(--muted2); margin-bottom: 20px; font-family: var(--head); letter-spacing: 0.5px; }
+.modal-form { display: flex; flex-direction: column; gap: 12px; }
+.modal-footer { display: flex; gap: 10px; margin-top: 20px; }
+.m-btn {
+  flex: 1; padding: 11px; border-radius: 8px; font-family: var(--head);
+  font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.15s; border: none;
+}
+.m-btn.cancel { background: none; border: 1px solid var(--border2); color: var(--muted2); }
+.m-btn.cancel:hover { background: var(--surface3); color: var(--text); }
+.m-btn.confirm { background: var(--water); color: var(--bg); }
+.m-btn.confirm:hover { opacity: 0.85; }
+.m-btn.danger-btn { background: var(--danger); color: white; }
+.m-btn.danger-btn:hover { opacity: 0.85; }
+
+/* ── ROW ACTIONS ── */
+.row-actions { display: flex; gap: 5px; }
+.row-btn {
+  padding: 3px 9px; border-radius: 5px; border: 1px solid var(--border2);
+  font-size: 10px; font-weight: 700; cursor: pointer; background: none;
+  font-family: var(--head); transition: all 0.15s; white-space: nowrap;
+}
+.row-btn.edit { color: var(--water); border-color: rgba(56,197,240,0.25); }
+.row-btn.edit:hover { background: rgba(56,197,240,0.08); }
+.row-btn.del { color: var(--danger); border-color: rgba(240,64,96,0.25); }
+.row-btn.del:hover { background: rgba(240,64,96,0.08); }
+
+/* ── VALIDATION FEEDBACK ── */
+.field-error { font-size: 11px; color: var(--danger); margin-top: 3px; display: none; font-weight: 500; }
+.field-error.show { display: block; }
+input.invalid { border-color: var(--danger) !important; box-shadow: 0 0 0 2px rgba(240,64,96,0.15); }
+input.valid   { border-color: var(--ok)     !important; }
+.meter-hint   { font-size: 11px; color: var(--muted2); margin-top: 3px; font-family: var(--head); }
+.reset-row    { display: flex; align-items: center; gap: 8px; }
+.reset-row input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--dg); cursor: pointer; flex-shrink: 0; }
+.reset-row label { font-size: 12px; color: var(--muted2); cursor: pointer; }
+
+@keyframes fadeIn  { from{opacity:0}to{opacity:1} }
+@keyframes scaleIn { from{opacity:0;transform:scale(0.93)}to{opacity:1;transform:scale(1)} }
+@keyframes shake   { 0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-5px)}40%,80%{transform:translateX(5px)} }
 
 /* ── MINI BAR CHART ── */
 .mini-bars { display: flex; align-items: flex-end; gap: 3px; height: 50px; margin-top: 10px; }
@@ -365,6 +469,7 @@ tr:hover td { background: var(--surface2); }
                   <th>Cost (₹)</th>
                   <th>Status</th>
                   <th>Logged By</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="logBody"></tbody>
@@ -388,12 +493,18 @@ tr:hover td { background: var(--surface2); }
             <div class="form-row">
               <div class="field">
                 <label>Date</label>
-                <input type="date" id="readingDate">
+                <input type="date" id="readingDate" oninput="validateMeterInput()">
               </div>
               <div class="field">
                 <label>Meter Reading</label>
-                <input type="number" id="meterReading" placeholder="e.g. 48230" step="0.1">
+                <input type="number" id="meterReading" placeholder="e.g. 48230" step="0.1" min="0" oninput="validateMeterInput()">
+                <div class="field-error" id="meterErr"></div>
+                <div class="meter-hint" id="meterHint"></div>
               </div>
+            </div>
+            <div class="reset-row">
+              <input type="checkbox" id="meterReset" onchange="validateMeterInput()">
+              <label for="meterReset">Meter was reset / replaced — reading starts fresh</label>
             </div>
             <div class="field">
               <label>Logged By</label>
@@ -457,6 +568,50 @@ tr:hover td { background: var(--surface2); }
         </div>
       </div>
 
+    </div>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-bg" id="editModal" style="display:none;" onclick="if(event.target===this)closeEdit()">
+  <div class="modal">
+    <h2>✏️ Edit Reading</h2>
+    <div class="modal-sub" id="editModalSub">Correcting entry for —</div>
+    <div class="modal-form">
+      <div class="field">
+        <label class="form-label" style="font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted2);font-weight:600;">Date</label>
+        <input type="date" id="editDate">
+      </div>
+      <div class="field">
+        <label class="form-label" style="font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted2);font-weight:600;">Meter Reading</label>
+        <input type="number" id="editMeter" step="0.1" min="0">
+        <div class="field-error" id="editMeterErr">Enter a valid positive number.</div>
+      </div>
+      <div class="field">
+        <label class="form-label" style="font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted2);font-weight:600;">Logged By</label>
+        <input type="text" id="editLoggedBy">
+      </div>
+      <div class="field">
+        <label class="form-label" style="font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted2);font-weight:600;">Remarks</label>
+        <input type="text" id="editRemarks">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="m-btn cancel" onclick="closeEdit()">Cancel</button>
+      <button class="m-btn confirm" onclick="saveEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE CONFIRM MODAL -->
+<div class="modal-bg" id="deleteModal" style="display:none;" onclick="if(event.target===this)closeDelete()">
+  <div class="modal">
+    <h2>🗑️ Delete Reading</h2>
+    <div class="modal-sub" id="deleteModalSub">This action cannot be undone.</div>
+    <p style="font-size:13px;color:var(--muted2);line-height:1.6;">Are you sure you want to remove this entry? The consumption for subsequent entries will be recalculated automatically.</p>
+    <div class="modal-footer">
+      <button class="m-btn cancel" onclick="closeDelete()">Cancel</button>
+      <button class="m-btn danger-btn" onclick="confirmDelete()">Yes, Delete</button>
     </div>
   </div>
 </div>
@@ -689,19 +844,31 @@ function renderLog() {
   const avg = (readings[currentUtil] || []).slice(-14).reduce((s,r) => s + r.consumption, 0) / 14;
   const tbody = document.getElementById('logBody');
 
-  tbody.innerHTML = data.map(r => {
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted2);">No readings logged yet.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = data.map((r, idx) => {
     const isAnomaly = r.consumption > avg * ANOMALY_THRESHOLD && r.consumption > 0;
     const isHigh = r.consumption > avg * 1.2 && r.consumption > 0 && !isAnomaly;
     const cost = Math.round(r.consumption * RATES[currentUtil]);
     const label = new Date(r.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' });
+    const resetNote = r.meterReset ? ' <span style="color:var(--dg);font-size:10px;font-family:var(--head);">[RESET]</span>' : '';
 
     return `<tr>
       <td class="mono">${label}</td>
-      <td class="mono">${r.meter.toLocaleString('en-IN')}</td>
+      <td class="mono">${r.meter.toLocaleString('en-IN')}${resetNote}</td>
       <td class="mono" style="color:${isAnomaly ? 'var(--danger)' : isHigh ? 'var(--warn)' : 'var(--ok)'};">${r.consumption} ${UNITS_LABEL[currentUtil]}</td>
       <td class="mono">₹${cost.toLocaleString('en-IN')}</td>
       <td>${isAnomaly ? '<span class="anomaly-badge badge-danger">⚠ Spike</span>' : isHigh ? '<span class="anomaly-badge badge-warn">↑ High</span>' : r.consumption === 0 ? '<span class="anomaly-badge badge-dg">Zero</span>' : '<span class="anomaly-badge badge-ok">Normal</span>'}</td>
       <td style="color:var(--muted2);font-size:12px;">${r.loggedBy}${r.remarks ? ' · <em style="opacity:0.6;">' + r.remarks + '</em>' : ''}</td>
+      <td>
+        <div class="row-actions">
+          <button class="row-btn edit" onclick="openEdit('${currentUtil}','${r.date}')">✏ Edit</button>
+          <button class="row-btn del"  onclick="openDelete('${currentUtil}','${r.date}')">🗑 Del</button>
+        </div>
+      </td>
     </tr>`;
   }).join('');
 }
@@ -768,40 +935,221 @@ function dismissAlert(id) {
   save(); renderAlerts();
 }
 
+// ── VALIDATION ────────────────────────────────────────────────────────────────
+function validateMeterInput() {
+  const input = document.getElementById('meterReading');
+  const errEl = document.getElementById('meterErr');
+  const hintEl = document.getElementById('meterHint');
+  const isReset = document.getElementById('meterReset').checked;
+  const raw = input.value.trim();
+  const val = parseFloat(raw);
+
+  // Clear state
+  input.classList.remove('invalid', 'valid');
+  errEl.classList.remove('show');
+  errEl.textContent = '';
+  hintEl.textContent = '';
+
+  if (raw === '') return; // empty — no feedback yet
+
+  // Block: non-numeric / text entered (NaN)
+  if (isNaN(val) || raw === '') {
+    input.classList.add('invalid');
+    errEl.textContent = '⛔ Only numbers are allowed here.';
+    errEl.classList.add('show');
+    return;
+  }
+
+  // Block: negative numbers
+  if (val < 0) {
+    input.classList.add('invalid');
+    errEl.textContent = '⛔ Meter reading cannot be negative.';
+    errEl.classList.add('show');
+    return;
+  }
+
+  // Block: unrealistically large jumps (> 10× the meter value itself suggests a typo)
+  const data = readings[currentUtil] || [];
+  const prev = [...data].sort((a, b) => a.date.localeCompare(b.date)).slice(-1)[0];
+
+  if (prev) {
+    if (!isReset && val < prev.meter) {
+      // Lower reading without reset flag — warn, don't block
+      input.classList.add('invalid');
+      errEl.textContent = `⚠ This reading (${val}) is lower than the previous reading (${prev.meter}). If the meter was reset or replaced, tick the checkbox above.`;
+      errEl.classList.add('show');
+      return;
+    }
+    if (!isReset && val > prev.meter * 5 && prev.meter > 0) {
+      // Suspiciously large value — could be a typo (e.g. extra zero)
+      input.classList.add('invalid');
+      errEl.textContent = `⚠ Reading ${val} seems unusually high vs previous ${prev.meter}. Please double-check.`;
+      errEl.classList.add('show');
+      return;
+    }
+    const consumption = isReset ? val : val - prev.meter;
+    hintEl.textContent = `→ Consumption will be logged as ${Math.round(consumption * 10) / 10} ${UNITS_LABEL[currentUtil]}`;
+  }
+
+  input.classList.add('valid');
+}
+
 // ── LOG READING ───────────────────────────────────────────────────────────────
 function logReading() {
   const date = document.getElementById('readingDate').value;
-  const meter = parseFloat(document.getElementById('meterReading').value);
+  const raw = document.getElementById('meterReading').value.trim();
+  const meter = parseFloat(raw);
   const loggedBy = document.getElementById('loggedBy').value.trim() || 'Unknown';
   const remarks = document.getElementById('remarks').value.trim();
+  const isReset = document.getElementById('meterReset').checked;
 
-  if (!date || isNaN(meter)) { toast('Please fill date and meter reading', 'warn'); return; }
+  // ── Hard validations ──
+  if (!date) { toast('⛔ Please select a date.', 'warn'); return; }
+
+  if (raw === '' || isNaN(meter)) {
+    const input = document.getElementById('meterReading');
+    const errEl = document.getElementById('meterErr');
+    input.classList.add('invalid');
+    errEl.textContent = '⛔ Please enter a valid number — no text or symbols.';
+    errEl.classList.add('show');
+    input.style.animation = 'shake 0.4s ease';
+    setTimeout(() => input.style.animation = '', 400);
+    toast('⛔ Invalid meter reading.', 'warn');
+    return;
+  }
+
+  if (meter < 0) {
+    toast('⛔ Meter reading cannot be negative.', 'warn');
+    return;
+  }
 
   const data = readings[currentUtil] || [];
   const prev = [...data].sort((a, b) => a.date.localeCompare(b.date)).slice(-1)[0];
-  const consumption = prev ? Math.max(0, Math.round((meter - prev.meter) * 10) / 10) : 0;
+
+  if (prev && !isReset && meter < prev.meter) {
+    toast('⛔ Reading is lower than previous. Tick "Meter reset" if applicable.', 'warn');
+    return;
+  }
+
+  // ── Compute consumption ──
+  let consumption;
+  if (!prev || isReset) {
+    consumption = 0; // first entry or reset — no consumption delta
+  } else {
+    consumption = Math.round((meter - prev.meter) * 10) / 10;
+  }
+
   const avg7 = data.slice(-7).reduce((s,r) => s + r.consumption, 0) / 7;
 
-  // Anomaly detection
+  // ── Anomaly detection ──
   const isAnomaly = consumption > avg7 * ANOMALY_THRESHOLD && avg7 > 0;
   const flag = document.getElementById('anomalyFlag');
   if (isAnomaly) {
     flag.classList.add('show');
-    document.getElementById('anomalyMsg').textContent = `Spike detected! ${consumption} ${UNITS_LABEL[currentUtil]} is ${Math.round((consumption/avg7-1)*100)}% above 7-day avg.`;
-    alerts.push({ id: Date.now(), type: 'high', title: `${currentUtil.charAt(0).toUpperCase()+currentUtil.slice(1)} spike on ${new Date(date).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}`, meta: `Consumption ${consumption} ${UNITS_LABEL[currentUtil]} — ${Math.round((consumption/avg7-1)*100)}% above avg`, dismissed: false });
+    document.getElementById('anomalyMsg').textContent = `Spike! ${consumption} ${UNITS_LABEL[currentUtil]} is ${Math.round((consumption/avg7-1)*100)}% above 7-day avg.`;
+    alerts.push({ id: Date.now(), type: 'high', title: `${currentUtil.charAt(0).toUpperCase()+currentUtil.slice(1)} spike on ${new Date(date).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}`, meta: `${consumption} ${UNITS_LABEL[currentUtil]} — ${Math.round((consumption/avg7-1)*100)}% above avg`, dismissed: false });
   } else {
     flag.classList.remove('show');
   }
 
-  readings[currentUtil].push({ date, meter, consumption, loggedBy, remarks });
+  readings[currentUtil].push({ date, meter, consumption, loggedBy, remarks, meterReset: isReset });
   readings[currentUtil].sort((a, b) => a.date.localeCompare(b.date));
+  recalcConsumptions(currentUtil);
 
   // Reset form
   document.getElementById('meterReading').value = '';
   document.getElementById('remarks').value = '';
+  document.getElementById('meterReset').checked = false;
+  document.getElementById('meterReading').classList.remove('valid', 'invalid');
+  document.getElementById('meterHint').textContent = '';
 
   save(); render();
-  toast(isAnomaly ? `⚠ Anomaly logged! ${consumption} ${UNITS_LABEL[currentUtil]}` : `✅ Reading logged — ${consumption} ${UNITS_LABEL[currentUtil]}`, isAnomaly ? 'danger' : 'ok');
+  toast(isReset ? `✅ Reading logged (meter reset)` : isAnomaly ? `⚠ Anomaly! ${consumption} ${UNITS_LABEL[currentUtil]}` : `✅ Logged — ${consumption} ${UNITS_LABEL[currentUtil]}`, isAnomaly ? 'danger' : 'ok');
+}
+
+// ── RECALCULATE CONSUMPTION after edit/delete ─────────────────────────────────
+function recalcConsumptions(util) {
+  const data = readings[util];
+  for (let i = 0; i < data.length; i++) {
+    if (i === 0 || data[i].meterReset) {
+      data[i].consumption = 0;
+    } else {
+      data[i].consumption = Math.max(0, Math.round((data[i].meter - data[i-1].meter) * 10) / 10);
+    }
+  }
+}
+
+// ── EDIT ──────────────────────────────────────────────────────────────────────
+let editTarget = null; // { util, date }
+
+function openEdit(util, date) {
+  const r = readings[util].find(x => x.date === date);
+  if (!r) return;
+  editTarget = { util, date };
+  document.getElementById('editDate').value = r.date;
+  document.getElementById('editMeter').value = r.meter;
+  document.getElementById('editLoggedBy').value = r.loggedBy || '';
+  document.getElementById('editRemarks').value = r.remarks || '';
+  document.getElementById('editModalSub').textContent = `Correcting entry for ${new Date(date).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})} · ${util.charAt(0).toUpperCase()+util.slice(1)}`;
+  document.getElementById('editMeterErr').classList.remove('show');
+  document.getElementById('editModal').style.display = 'flex';
+}
+
+function closeEdit() { document.getElementById('editModal').style.display = 'none'; editTarget = null; }
+
+function saveEdit() {
+  if (!editTarget) return;
+  const newMeter = parseFloat(document.getElementById('editMeter').value);
+  const newDate  = document.getElementById('editDate').value;
+  const errEl    = document.getElementById('editMeterErr');
+
+  // Validate
+  if (isNaN(newMeter) || document.getElementById('editMeter').value.trim() === '') {
+    errEl.textContent = '⛔ Enter a valid number — no text allowed.';
+    errEl.classList.add('show');
+    return;
+  }
+  if (newMeter < 0) {
+    errEl.textContent = '⛔ Reading cannot be negative.';
+    errEl.classList.add('show');
+    return;
+  }
+
+  errEl.classList.remove('show');
+
+  const arr = readings[editTarget.util];
+  const idx = arr.findIndex(x => x.date === editTarget.date);
+  if (idx === -1) return;
+
+  arr[idx].meter    = newMeter;
+  arr[idx].date     = newDate;
+  arr[idx].loggedBy = document.getElementById('editLoggedBy').value.trim() || arr[idx].loggedBy;
+  arr[idx].remarks  = document.getElementById('editRemarks').value.trim();
+  arr.sort((a, b) => a.date.localeCompare(b.date));
+  recalcConsumptions(editTarget.util);
+
+  closeEdit(); save(); render();
+  toast('✅ Entry updated and consumption recalculated.', 'ok');
+}
+
+// ── DELETE ────────────────────────────────────────────────────────────────────
+let deleteTarget = null;
+
+function openDelete(util, date) {
+  deleteTarget = { util, date };
+  const r = readings[util].find(x => x.date === date);
+  document.getElementById('deleteModalSub').textContent = `Entry: ${new Date(date).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})} · Meter ${r?.meter} · ${util}`;
+  document.getElementById('deleteModal').style.display = 'flex';
+}
+
+function closeDelete() { document.getElementById('deleteModal').style.display = 'none'; deleteTarget = null; }
+
+function confirmDelete() {
+  if (!deleteTarget) return;
+  readings[deleteTarget.util] = readings[deleteTarget.util].filter(x => x.date !== deleteTarget.date);
+  recalcConsumptions(deleteTarget.util);
+  closeDelete(); save(); render();
+  toast('🗑 Entry deleted. Consumption recalculated.', 'warn');
 }
 
 // ── EXPORT CSV ────────────────────────────────────────────────────────────────
