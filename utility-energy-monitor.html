@@ -3,22 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GridWatch — Utility & Energy Monitor</title>
+<title>GCS Energy Consumption Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg: #f7f8fc;
+  --bg: #faf8ff;
   --surface: #ffffff;
-  --surface2: #f0f2f8;
-  --surface3: #e8ebf5;
-  --border: #e0e4f0;
-  --border2: #d0d5e8;
+  --surface2: #f3f0ff;
+  --surface3: #ede8ff;
+  --border: #e2ddf7;
+  --border2: #cfc8f0;
   --elec: #f59e0b;
   --elec-bg: #fffbeb;
   --elec-border: #fde68a;
-  --water: #0ea5e9;
-  --water-bg: #f0f9ff;
-  --water-border: #bae6fd;
+  --water: #8b5cf6;
+  --water-bg: #f5f3ff;
+  --water-border: #ddd6fe;
   --dg: #f97316;
   --dg-bg: #fff7ed;
   --dg-border: #fed7aa;
@@ -28,11 +28,13 @@
   --danger: #ef4444;
   --danger-bg: #fef2f2;
   --purple: #8b5cf6;
-  --pink: #ec4899;
-  --text: #0f172a;
-  --text2: #334155;
-  --muted: #94a3b8;
-  --muted2: #64748b;
+  --purple-dark: #6d28d9;
+  --orange: #f97316;
+  --orange-dark: #ea580c;
+  --text: #1e1b4b;
+  --text2: #3730a3;
+  --muted: #a09cc0;
+  --muted2: #6b6fa8;
   --head: 'Space Mono', monospace;
   --body: 'Lexend', sans-serif;
 }
@@ -47,18 +49,21 @@ body {
 body::before {
   content: '';
   position: fixed; inset: 0; pointer-events: none; z-index: 0;
-  background-image: radial-gradient(circle, #cbd5e1 1px, transparent 1px);
+  background-image: radial-gradient(circle, #c4b5fd 1px, transparent 1px);
   background-size: 28px 28px;
-  opacity: 0.5;
+  opacity: 0.35;
 }
 
-/* Colorful top gradient bar */
+/* Purple-orange gradient top bar */
 body::after {
   content: '';
   position: fixed; top: 0; left: 0; right: 0; height: 4px;
-  background: linear-gradient(90deg, var(--elec), var(--pink), var(--water), var(--ok), var(--dg));
+  background: linear-gradient(90deg, var(--purple-dark), var(--purple), var(--orange), var(--orange-dark), var(--purple));
+  background-size: 200% 100%;
+  animation: gradientShift 4s ease infinite;
   z-index: 1000;
 }
+@keyframes gradientShift { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
 
 .app { position: relative; z-index: 1; max-width: 1280px; margin: 0 auto; padding: 0 24px 60px; }
 
@@ -71,19 +76,19 @@ header {
 .brand { display: flex; flex-direction: column; gap: 4px; }
 .brand h1 {
   font-family: var(--head); font-size: 26px; font-weight: 700;
-  letter-spacing: -1px; color: var(--text);
+  letter-spacing: -1px; color: var(--purple-dark);
 }
-.brand h1 span { color: var(--elec); }
+.brand h1 span { color: var(--orange); }
 .brand p { font-size: 11px; color: var(--muted2); letter-spacing: 2px; text-transform: uppercase; font-weight: 500; }
 .header-right { display: flex; align-items: center; gap: 16px; }
 .live-badge {
   display: flex; align-items: center; gap: 6px; padding: 6px 14px;
-  border: 1.5px solid var(--ok); border-radius: 100px; background: var(--ok-bg);
-  font-family: var(--head); font-size: 12px; color: var(--ok); font-weight: 700;
+  border: 1.5px solid var(--purple); border-radius: 100px; background: var(--water-bg);
+  font-family: var(--head); font-size: 12px; color: var(--purple); font-weight: 700;
 }
-.pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); animation: pulse 2s infinite; }
+.pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--purple); animation: pulse 2s infinite; }
 @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.3)} }
-#clockDisplay { font-family: var(--head); font-size: 14px; font-weight: 700; color: var(--text); }
+#clockDisplay { font-family: var(--head); font-size: 14px; font-weight: 700; color: var(--purple-dark); }
 .header-date { font-size: 11px; color: var(--muted2); text-align: right; margin-top: 2px; }
 
 /* ── UTILITY SELECTOR ── */
@@ -98,10 +103,10 @@ header {
   font-size: 13px; font-weight: 600; color: var(--muted2);
   transition: all 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
-.util-tab:hover { border-color: var(--border2); background: var(--surface2); color: var(--text); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-.util-tab.active[data-util="electricity"] { border-color: var(--elec); background: var(--elec-bg); color: var(--elec); box-shadow: 0 4px 16px rgba(245,158,11,0.2); }
-.util-tab.active[data-util="water"]       { border-color: var(--water); background: var(--water-bg); color: var(--water); box-shadow: 0 4px 16px rgba(14,165,233,0.2); }
-.util-tab.active[data-util="dg"]          { border-color: var(--dg); background: var(--dg-bg); color: var(--dg); box-shadow: 0 4px 16px rgba(249,115,22,0.2); }
+.util-tab:hover { border-color: var(--border2); background: var(--surface2); color: var(--text); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(139,92,246,0.1); }
+.util-tab.active[data-util="electricity"] { border-color: var(--orange); background: var(--dg-bg); color: var(--orange); box-shadow: 0 4px 16px rgba(249,115,22,0.2); }
+.util-tab.active[data-util="water"]       { border-color: var(--purple); background: var(--water-bg); color: var(--purple); box-shadow: 0 4px 16px rgba(139,92,246,0.2); }
+.util-tab.active[data-util="dg"]          { border-color: var(--orange-dark); background: var(--dg-bg); color: var(--orange-dark); box-shadow: 0 4px 16px rgba(234,88,12,0.2); }
 .util-icon { font-size: 18px; }
 .util-tab .unit { font-size: 10px; opacity: 0.7; font-family: var(--head); margin-left: 2px; }
 
@@ -119,16 +124,16 @@ header {
 .kpi::before {
   content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
 }
-.kpi.elec::before { background: linear-gradient(90deg, var(--elec), #fbbf24); }
-.kpi.water::before { background: linear-gradient(90deg, var(--water), #38bdf8); }
-.kpi.dg::before { background: linear-gradient(90deg, var(--dg), #fb923c); }
-.kpi.ok::before { background: linear-gradient(90deg, var(--ok), #34d399); }
+.kpi.elec::before  { background: linear-gradient(90deg, var(--orange-dark), var(--orange)); }
+.kpi.water::before { background: linear-gradient(90deg, var(--purple-dark), var(--purple)); }
+.kpi.dg::before    { background: linear-gradient(90deg, var(--orange), var(--elec)); }
+.kpi.ok::before    { background: linear-gradient(90deg, var(--purple), var(--orange)); }
 .kpi-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted2); font-weight: 600; margin-bottom: 10px; }
 .kpi-value { font-family: var(--head); font-size: 30px; font-weight: 700; line-height: 1; letter-spacing: -1px; }
-.kpi-value.elec { color: var(--elec); }
-.kpi-value.water { color: var(--water); }
-.kpi-value.dg { color: var(--dg); }
-.kpi-value.ok { color: var(--ok); }
+.kpi-value.elec  { color: var(--orange); }
+.kpi-value.water { color: var(--purple); }
+.kpi-value.dg    { color: var(--orange-dark); }
+.kpi-value.ok    { color: var(--purple); }
 .kpi-unit { font-size: 12px; color: var(--muted2); margin-top: 6px; font-family: var(--head); }
 .kpi-delta {
   display: inline-flex; align-items: center; gap: 4px; margin-top: 8px;
@@ -152,14 +157,14 @@ header {
 .panel-head {
   display: flex; align-items: center; justify-content: space-between;
   padding: 14px 20px; border-bottom: 1.5px solid var(--border);
-  background: var(--surface2);
+  background: linear-gradient(135deg, var(--surface2), var(--surface));
 }
 .panel-title { font-family: var(--head); font-size: 13px; color: var(--text); display: flex; align-items: center; gap: 8px; font-weight: 700; }
 .panel-title .dot { width: 8px; height: 8px; border-radius: 50%; }
-.dot-elec { background: var(--elec); }
-.dot-water { background: var(--water); }
-.dot-dg { background: var(--dg); }
-.dot-ok { background: var(--ok); }
+.dot-elec  { background: var(--orange); }
+.dot-water { background: var(--purple); }
+.dot-dg    { background: var(--orange-dark); }
+.dot-ok    { background: var(--purple); }
 .panel-body { padding: 20px; }
 
 /* ── CHART ── */
@@ -182,7 +187,7 @@ input[type="number"], input[type="date"], input[type="text"], select, textarea {
   border-radius: 8px; font-family: var(--body); font-size: 13px; color: var(--text);
   outline: none; transition: border 0.15s; width: 100%;
 }
-input:focus, select:focus, textarea:focus { border-color: var(--water); box-shadow: 0 0 0 3px rgba(14,165,233,0.1); }
+input:focus, select:focus, textarea:focus { border-color: var(--purple); box-shadow: 0 0 0 3px rgba(139,92,246,0.12); }
 select { appearance: none; cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2394a3b8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; }
 input[type="number"]::-webkit-inner-spin-button { opacity: 0.4; }
 
@@ -195,13 +200,13 @@ input[type="number"]::-webkit-inner-spin-button { opacity: 0.4; }
 .anomaly-flag.show { display: flex; }
 
 .submit-btn {
-  width: 100%; padding: 12px; background: var(--text);
+  width: 100%; padding: 12px; background: linear-gradient(135deg, var(--purple-dark), var(--purple));
   border: none; border-radius: 10px;
   font-family: var(--head); font-size: 13px; font-weight: 700; cursor: pointer;
   color: white; transition: all 0.2s; display: flex; align-items: center;
-  justify-content: center; gap: 8px; box-shadow: 0 4px 12px rgba(15,23,42,0.15);
+  justify-content: center; gap: 8px; box-shadow: 0 4px 14px rgba(109,40,217,0.3);
 }
-.submit-btn:hover { opacity: 0.87; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(15,23,42,0.2); }
+.submit-btn:hover { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(109,40,217,0.4); }
 
 /* ── LOG TABLE ── */
 .log-table-wrap { overflow-x: auto; max-height: 320px; overflow-y: auto; }
@@ -262,9 +267,9 @@ tr:hover td { background: var(--surface2); }
 .cost-sub { font-size: 11px; color: var(--muted2); font-family: var(--head); }
 .cost-card-right { text-align: right; }
 .cost-val { font-family: var(--head); font-size: 18px; font-weight: 700; white-space: nowrap; }
-.cost-val.elec  { color: var(--elec);  }
-.cost-val.water { color: var(--water); }
-.cost-val.dg    { color: var(--dg);    }
+.cost-val.elec  { color: var(--orange); }
+.cost-val.water { color: var(--purple); }
+.cost-val.dg    { color: var(--orange-dark); }
 .cost-rate { font-size: 10px; color: var(--muted2); margin-top: 2px; font-family: var(--head); }
 
 /* ── ALERTS ── */
@@ -294,8 +299,8 @@ tr:hover td { background: var(--surface2); }
   font-size: 10px; font-weight: 700; cursor: pointer; background: var(--surface);
   font-family: var(--head); transition: all 0.15s; white-space: nowrap;
 }
-.row-btn.edit { color: var(--water); border-color: var(--water-border); background: var(--water-bg); }
-.row-btn.edit:hover { background: #bae6fd; border-color: var(--water); }
+.row-btn.edit { color: var(--purple); border-color: var(--water-border); background: var(--water-bg); }
+.row-btn.edit:hover { background: #ddd6fe; border-color: var(--purple); }
 .row-btn.del  { color: var(--danger); border-color: #fecaca; background: var(--danger-bg); }
 .row-btn.del:hover  { background: #fecaca; border-color: var(--danger); }
 
@@ -321,7 +326,7 @@ tr:hover td { background: var(--surface2); }
 }
 .m-btn.cancel { background: var(--surface2); border: 1.5px solid var(--border); color: var(--muted2); }
 .m-btn.cancel:hover { background: var(--surface3); color: var(--text); }
-.m-btn.confirm { background: var(--water); color: white; box-shadow: 0 4px 12px rgba(14,165,233,0.3); }
+.m-btn.confirm { background: linear-gradient(135deg, var(--purple-dark), var(--purple)); color: white; box-shadow: 0 4px 12px rgba(109,40,217,0.3); }
 .m-btn.confirm:hover { opacity: 0.85; transform: translateY(-1px); }
 .m-btn.danger { background: var(--danger); color: white; box-shadow: 0 4px 12px rgba(239,68,68,0.25); }
 .m-btn.danger:hover { opacity: 0.85; }
@@ -342,20 +347,6 @@ input.valid   { border-color: var(--ok)     !important; box-shadow: 0 0 0 3px rg
 @keyframes fadeIn  { from{opacity:0}to{opacity:1} }
 @keyframes scaleIn { from{opacity:0;transform:scale(0.93)}to{opacity:1;transform:scale(1)} }
 @keyframes shake   { 0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-5px)}40%,80%{transform:translateX(5px)} }
-
-/* ── COST PANEL ── */
-.cost-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
-.cost-card {
-  padding: 14px; border-radius: 12px; border: 1.5px solid var(--border);
-  background: var(--surface2); text-align: center; transition: all 0.2s;
-}
-.cost-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
-.cost-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted2); font-weight: 700; margin-bottom: 8px; }
-.cost-val { font-family: var(--head); font-size: 20px; font-weight: 700; }
-.cost-val.elec  { color: var(--elec);  }
-.cost-val.water { color: var(--water); }
-.cost-val.dg    { color: var(--dg);    }
-.cost-sub { font-size: 10px; color: var(--muted2); margin-top: 4px; font-family: var(--head); }
 
 /* ── RIGHT COL ── */
 .right-col { display: flex; flex-direction: column; gap: 16px; }
@@ -392,7 +383,7 @@ input.valid   { border-color: var(--ok)     !important; box-shadow: 0 0 0 3px rg
 @keyframes slideIn  { from { opacity:0; transform:translateX(16px);  } to { opacity:1; transform:none; } }
 
 @media (max-width: 960px) { .main-grid { grid-template-columns: 1fr; } .kpi-row { grid-template-columns: repeat(2,1fr); } }
-@media (max-width: 560px) { .utility-tabs { flex-wrap: wrap; } .form-row { grid-template-columns: 1fr; } .cost-grid { grid-template-columns: 1fr; } }
+@media (max-width: 560px) { .utility-tabs { flex-wrap: wrap; } .form-row { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -401,8 +392,8 @@ input.valid   { border-color: var(--ok)     !important; box-shadow: 0 0 0 3px rg
   <!-- HEADER -->
   <header>
     <div class="brand">
-      <h1>Grid<span>Watch</span></h1>
-      <p>Utility &amp; Energy Consumption Monitor</p>
+      <h1>GCS <span>Energy</span></h1>
+      <p>GCS Energy Consumption Dashboard</p>
     </div>
     <div class="header-right">
       <div class="live-badge"><div class="pulse"></div> Live</div>
@@ -539,7 +530,7 @@ input.valid   { border-color: var(--ok)     !important; box-shadow: 0 0 0 3px rg
         </div>
         <div class="panel-body">
           <div class="cost-grid">
-            <div class="cost-card" style="border-left: 3px solid var(--elec);">
+            <div class="cost-card" style="border-left: 3px solid var(--orange);">
               <div class="cost-card-left">
                 <div class="cost-card-icon">⚡</div>
                 <div class="cost-card-info">
@@ -552,7 +543,7 @@ input.valid   { border-color: var(--ok)     !important; box-shadow: 0 0 0 3px rg
                 <div class="cost-val elec" id="costElec">₹0</div>
               </div>
             </div>
-            <div class="cost-card" style="border-left: 3px solid var(--water);">
+            <div class="cost-card" style="border-left: 3px solid var(--purple);">
               <div class="cost-card-left">
                 <div class="cost-card-icon">💧</div>
                 <div class="cost-card-info">
@@ -565,7 +556,7 @@ input.valid   { border-color: var(--ok)     !important; box-shadow: 0 0 0 3px rg
                 <div class="cost-val water" id="costWater">₹0</div>
               </div>
             </div>
-            <div class="cost-card" style="border-left: 3px solid var(--dg);">
+            <div class="cost-card" style="border-left: 3px solid var(--orange-dark);">
               <div class="cost-card-left">
                 <div class="cost-card-icon">🔋</div>
                 <div class="cost-card-info">
@@ -613,7 +604,7 @@ input.valid   { border-color: var(--ok)     !important; box-shadow: 0 0 0 3px rg
       <div style="padding:14px;background:var(--surface3);border-radius:10px;border:1px solid var(--border2);">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
           <span style="font-size:16px;">⚡</span>
-          <span style="font-family:var(--head);font-size:12px;color:var(--elec);font-weight:700;">ELECTRICITY</span>
+          <span style="font-family:var(--head);font-size:12px;color:var(--orange);font-weight:700;">ELECTRICITY</span>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
           <div class="field">
@@ -632,7 +623,7 @@ input.valid   { border-color: var(--ok)     !important; box-shadow: 0 0 0 3px rg
       <div style="padding:14px;background:var(--surface3);border-radius:10px;border:1px solid var(--border2);">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
           <span style="font-size:16px;">💧</span>
-          <span style="font-family:var(--head);font-size:12px;color:var(--water);font-weight:700;">WATER</span>
+          <span style="font-family:var(--head);font-size:12px;color:var(--purple);font-weight:700;">WATER</span>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
           <div class="field">
@@ -651,7 +642,7 @@ input.valid   { border-color: var(--ok)     !important; box-shadow: 0 0 0 3px rg
       <div style="padding:14px;background:var(--surface3);border-radius:10px;border:1px solid var(--border2);">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
           <span style="font-size:16px;">🔋</span>
-          <span style="font-family:var(--head);font-size:12px;color:var(--dg);font-weight:700;">DG FUEL</span>
+          <span style="font-family:var(--head);font-size:12px;color:var(--orange-dark);font-weight:700;">DG FUEL</span>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
           <div class="field">
@@ -734,7 +725,7 @@ let chartRange = 7;
 const DEFAULT_RATES = { electricity: 8.5, water: 45, dg: 92 };
 let RATES = JSON.parse(localStorage.getItem('gwRates')) || { ...DEFAULT_RATES };
 const UNITS_LABEL = { electricity: 'kWh', water: 'KL', dg: 'L' };
-const UTIL_COLORS = { electricity: '#f0c040', water: '#38c5f0', dg: '#f07840' };
+const UTIL_COLORS = { electricity: '#f97316', water: '#8b5cf6', dg: '#ea580c' };
 const ANOMALY_THRESHOLD = 1.5; // 50% above average
 
 // Seed data — last 30 days
