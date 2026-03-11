@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ShiftLog — Daily Checklist & Handover</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;600;700;800&family=Instrument+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f5f2eb;
+  --surface: #faf8f3;
+  --surface2: #eeeae0;
+  --border: #ddd8cc;
+  --ink: #1a1814;
+  --ink2: #4a4640;
+  --muted: #9a9490;
+  --morning: #e8823a;
+  --evening: #3a6ee8;
+  --night: #1a1260;
+  --ok: #2d8a4e;
+  --warn: #c97d1a;
+  --danger: #c0392b;
+  --head: 'Bricolage Grotesque', sans-serif;
+  --body: 'Instrument Sans', sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); min-height: 100vh; }
+
+/* Grain overlay */
+body::before {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 999;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  opacity: 0.4;
+}
+
+/* LAYOUT */
+.app { display: flex; flex-direction: column; min-height: 100vh; max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+
+/* HEADER */
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 24px 0 20px; border-bottom: 2px solid var(--ink);
+  animation: fadeDown 0.5s ease both;
+}
+.brand { display: flex; align-items: baseline; gap: 10px; }
+.brand h1 { font-family: var(--head); font-size: 28px; font-weight: 800; letter-spacing: -1px; }
+.brand .sub { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; font-weight: 500; }
+.header-meta { display: flex; align-items: center; gap: 16px; }
+.live-time { font-family: var(--head); font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+.date-display { font-size: 13px; color: var(--ink2); text-align: right; }
+
+/* SHIFT SELECTOR */
+.shift-bar {
+  display: flex; align-items: center; gap: 0; margin: 20px 0;
+  border: 2px solid var(--ink); border-radius: 12px; overflow: hidden;
+  animation: fadeDown 0.5s 0.1s ease both;
+  width: fit-content;
+}
+.shift-btn {
+  display: flex; align-items: center; gap: 8px; padding: 10px 22px;
+  background: none; border: none; cursor: pointer; font-family: var(--head);
+  font-size: 14px; font-weight: 600; color: var(--muted); transition: all 0.2s;
+  border-right: 2px solid var(--ink); position: relative;
+}
+.shift-btn:last-child { border-right: none; }
+.shift-btn.active[data-shift="morning"] { background: var(--morning); color: white; }
+.shift-btn.active[data-shift="evening"] { background: var(--evening); color: white; }
+.shift-btn.active[data-shift="night"] { background: var(--night); color: white; }
+.shift-btn:hover:not(.active) { background: var(--surface2); color: var(--ink); }
+.shift-dot { width: 8px; height: 8px; border-radius: 50%; }
+.morning-dot { background: var(--morning); }
+.evening-dot { background: var(--evening); }
+.night-dot { background: var(--night); }
+.shift-btn.active .shift-dot { background: rgba(255,255,255,0.7); }
+
+/* MAIN GRID */
+.grid { display: grid; grid-template-columns: 1fr 380px; gap: 20px; padding-bottom: 40px; }
+
+/* PANEL */
+.panel {
+  background: var(--surface); border: 2px solid var(--ink); border-radius: 16px;
+  overflow: hidden; animation: fadeUp 0.5s 0.2s ease both;
+}
+.panel-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px; border-bottom: 2px solid var(--ink); background: var(--surface2);
+}
+.panel-title { font-family: var(--head); font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.panel-title .emoji { font-size: 18px; }
+.panel-body { padding: 20px; }
+
+/* PROGRESS */
+.progress-wrap { margin-bottom: 20px; }
+.progress-label { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); margin-bottom: 8px; }
+.progress-bar { height: 8px; background: var(--surface2); border-radius: 100px; border: 1.5px solid var(--border); overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 100px; transition: width 0.5s cubic-bezier(0.34,1.56,0.64,1); background: linear-gradient(90deg, var(--ok), #4abe78); }
+.progress-fill.warn { background: linear-gradient(90deg, var(--warn), #f0a830); }
+.progress-fill.danger { background: linear-gradient(90deg, var(--danger), #e05a4a); }
+
+/* ZONE TABS */
+.zone-tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+.zone-tab {
+  padding: 5px 14px; border-radius: 100px; border: 1.5px solid var(--border);
+  font-size: 12px; font-weight: 600; cursor: pointer; background: none;
+  color: var(--ink2); transition: all 0.15s; font-family: var(--body);
+}
+.zone-tab.active { background: var(--ink); color: white; border-color: var(--ink); }
+.zone-tab:hover:not(.active) { background: var(--surface2); }
+
+/* CHECKLIST */
+.checklist { display: flex; flex-direction: column; gap: 8px; max-height: 420px; overflow-y: auto; padding-right: 4px; }
+.checklist::-webkit-scrollbar { width: 4px; }
+.checklist::-webkit-scrollbar-track { background: transparent; }
+.checklist::-webkit-scrollbar-thumb { background: var(--border); border-radius: 100px; }
+
+.check-item {
+  display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px;
+  border: 1.5px solid var(--border); border-radius: 10px; cursor: pointer;
+  transition: all 0.2s; background: var(--surface); position: relative;
+}
+.check-item:hover { border-color: var(--ink2); background: var(--surface2); }
+.check-item.done { background: rgba(45,138,78,0.06); border-color: rgba(45,138,78,0.3); }
+.check-item.issue { background: rgba(192,57,43,0.06); border-color: rgba(192,57,43,0.3); }
+
+.checkbox {
+  width: 22px; height: 22px; border-radius: 6px; border: 2px solid var(--border);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  transition: all 0.2s; margin-top: 1px;
+}
+.check-item.done .checkbox { background: var(--ok); border-color: var(--ok); }
+.check-item.issue .checkbox { background: var(--danger); border-color: var(--danger); }
+.checkbox svg { display: none; }
+.check-item.done .checkbox svg, .check-item.issue .checkbox svg { display: block; }
+
+.check-content { flex: 1; }
+.check-name { font-size: 14px; font-weight: 500; color: var(--ink); }
+.check-item.done .check-name { text-decoration: line-through; color: var(--muted); }
+.check-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.check-actions { display: flex; gap: 6px; margin-top: 8px; }
+
+.tag {
+  display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px;
+  border-radius: 100px; font-size: 11px; font-weight: 600;
+}
+.tag.critical { background: rgba(192,57,43,0.12); color: var(--danger); }
+.tag.routine { background: rgba(74,110,232,0.1); color: var(--evening); }
+.tag.safety { background: rgba(201,125,26,0.12); color: var(--warn); }
+
+.mini-btn {
+  padding: 3px 10px; border-radius: 6px; border: 1.5px solid var(--border);
+  font-size: 11px; font-weight: 600; cursor: pointer; background: none;
+  color: var(--ink2); transition: all 0.15s; font-family: var(--body);
+}
+.mini-btn:hover { background: var(--surface2); }
+.mini-btn.red { border-color: rgba(192,57,43,0.4); color: var(--danger); }
+.mini-btn.red:hover { background: rgba(192,57,43,0.08); }
+
+/* ADD TASK */
+.add-task-row { display: flex; gap: 8px; margin-top: 14px; }
+.add-input {
+  flex: 1; padding: 9px 14px; border: 1.5px solid var(--border); border-radius: 8px;
+  font-family: var(--body); font-size: 13px; background: var(--surface); color: var(--ink);
+  outline: none; transition: border 0.15s;
+}
+.add-input:focus { border-color: var(--ink); }
+.add-input::placeholder { color: var(--muted); }
+.add-btn {
+  padding: 9px 16px; background: var(--ink); color: white; border: none;
+  border-radius: 8px; font-family: var(--head); font-size: 13px; font-weight: 700;
+  cursor: pointer; transition: all 0.15s; white-space: nowrap;
+}
+.add-btn:hover { opacity: 0.85; transform: translateY(-1px); }
+
+/* RIGHT COLUMN */
+.right-col { display: flex; flex-direction: column; gap: 16px; }
+
+/* HANDOVER PANEL */
+.handover-panel { animation: fadeUp 0.5s 0.3s ease both; }
+
+.handover-form { display: flex; flex-direction: column; gap: 12px; }
+.form-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); margin-bottom: 5px; display: block; }
+textarea, select, input[type="text"] {
+  width: 100%; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 8px;
+  font-family: var(--body); font-size: 13px; background: var(--surface); color: var(--ink);
+  outline: none; transition: border 0.15s; resize: none;
+}
+textarea:focus, select:focus, input[type="text"]:focus { border-color: var(--ink); }
+select { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239a9490' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+
+.submit-btn {
+  width: 100%; padding: 12px; background: var(--ink); color: white;
+  border: none; border-radius: 10px; font-family: var(--head); font-size: 15px;
+  font-weight: 700; cursor: pointer; transition: all 0.2s; letter-spacing: -0.3px;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.submit-btn:hover { opacity: 0.87; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,0,0,0.15); }
+
+/* PENDING ISSUES */
+.issues-list { display: flex; flex-direction: column; gap: 8px; max-height: 260px; overflow-y: auto; }
+.issue-card {
+  padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 10px;
+  border-left: 4px solid var(--danger); background: var(--surface);
+  animation: fadeUp 0.3s ease both;
+}
+.issue-card.resolved { border-left-color: var(--ok); opacity: 0.6; }
+.issue-card.medium { border-left-color: var(--warn); }
+.issue-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.issue-title { font-size: 13px; font-weight: 600; color: var(--ink); }
+.issue-meta { font-size: 11px; color: var(--muted); margin-top: 3px; }
+.resolve-btn {
+  padding: 3px 10px; border-radius: 6px; border: 1.5px solid rgba(45,138,78,0.4);
+  font-size: 11px; font-weight: 600; cursor: pointer; background: none;
+  color: var(--ok); transition: all 0.15s; white-space: nowrap; font-family: var(--body);
+}
+.resolve-btn:hover { background: rgba(45,138,78,0.1); }
+
+/* HANDOVER LOG */
+.log-list { display: flex; flex-direction: column; gap: 0; max-height: 300px; overflow-y: auto; }
+.log-entry {
+  padding: 14px 0; border-bottom: 1px solid var(--border);
+  animation: fadeUp 0.3s ease both;
+}
+.log-entry:last-child { border-bottom: none; }
+.log-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.log-shift-badge {
+  display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px;
+  border-radius: 100px; font-size: 11px; font-weight: 700;
+}
+.badge-morning { background: rgba(232,130,58,0.15); color: var(--morning); }
+.badge-evening { background: rgba(58,110,232,0.15); color: var(--evening); }
+.badge-night { background: rgba(26,18,96,0.12); color: var(--night); }
+.log-time { font-size: 11px; color: var(--muted); }
+.log-officer { font-size: 12px; font-weight: 600; color: var(--ink2); }
+.log-notes { font-size: 13px; color: var(--ink); margin: 4px 0; line-height: 1.5; }
+.log-stats { display: flex; gap: 10px; margin-top: 6px; }
+.log-stat { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 4px; }
+.log-stat strong { color: var(--ink2); }
+
+/* STATS ROW */
+.stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+.stat-card {
+  padding: 14px; background: var(--surface2); border-radius: 10px;
+  border: 1.5px solid var(--border); text-align: center;
+}
+.stat-num { font-family: var(--head); font-size: 28px; font-weight: 800; letter-spacing: -1px; }
+.stat-label { font-size: 11px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.6px; margin-top: 2px; }
+.stat-num.green { color: var(--ok); }
+.stat-num.orange { color: var(--warn); }
+.stat-num.red { color: var(--danger); }
+
+/* TOAST */
+.toast-container { position: fixed; bottom: 24px; right: 24px; display: flex; flex-direction: column; gap: 8px; z-index: 1000; }
+.toast {
+  padding: 12px 18px; background: var(--ink); color: white; border-radius: 10px;
+  font-size: 13px; font-weight: 500; box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+  animation: slideIn 0.3s ease both; display: flex; align-items: center; gap: 8px;
+  max-width: 300px;
+}
+.toast.green { background: var(--ok); }
+.toast.orange { background: var(--warn); }
+
+/* MODAL */
+.modal-bg {
+  position: fixed; inset: 0; background: rgba(26,24,20,0.6); backdrop-filter: blur(4px);
+  z-index: 500; display: flex; align-items: center; justify-content: center;
+  animation: fadeIn 0.2s ease both;
+}
+.modal {
+  background: var(--surface); border: 2px solid var(--ink); border-radius: 16px;
+  padding: 28px; width: 480px; max-width: 95vw;
+  animation: scaleIn 0.25s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+.modal h2 { font-family: var(--head); font-size: 20px; font-weight: 800; margin-bottom: 16px; }
+.modal-footer { display: flex; gap: 10px; margin-top: 20px; }
+.cancel-btn {
+  flex: 1; padding: 11px; border: 2px solid var(--border); border-radius: 8px;
+  font-family: var(--head); font-size: 14px; font-weight: 700; cursor: pointer;
+  background: none; color: var(--ink2); transition: all 0.15s;
+}
+.cancel-btn:hover { background: var(--surface2); }
+.confirm-btn {
+  flex: 1; padding: 11px; border: none; border-radius: 8px;
+  font-family: var(--head); font-size: 14px; font-weight: 700; cursor: pointer;
+  background: var(--danger); color: white; transition: all 0.15s;
+}
+.confirm-btn:hover { opacity: 0.85; }
+
+/* EMPTY */
+.empty-state { text-align: center; padding: 32px 20px; color: var(--muted); }
+.empty-state .icon { font-size: 36px; margin-bottom: 8px; }
+.empty-state p { font-size: 13px; }
+
+/* ANIMATIONS */
+@keyframes fadeDown { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: none; } }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
+@keyframes scaleIn { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
+
+/* RESPONSIVE */
+@media (max-width: 900px) {
+  .grid { grid-template-columns: 1fr; }
+  .right-col { order: -1; }
+}
+@media (max-width: 600px) {
+  header { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .stats-row { grid-template-columns: repeat(3, 1fr); }
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <header>
+    <div class="brand">
+      <h1>ShiftLog</h1>
+      <span class="sub">Facility Handover System</span>
+    </div>
+    <div class="header-meta">
+      <div>
+        <div class="live-time" id="liveTime">--:--</div>
+        <div class="date-display" id="liveDate">Loading...</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- SHIFT SELECTOR -->
+  <div class="shift-bar">
+    <button class="shift-btn active" data-shift="morning" onclick="selectShift('morning')">
+      <span class="shift-dot morning-dot"></span> Morning · 06:00–14:00
+    </button>
+    <button class="shift-btn" data-shift="evening" onclick="selectShift('evening')">
+      <span class="shift-dot evening-dot"></span> Evening · 14:00–22:00
+    </button>
+    <button class="shift-btn" data-shift="night" onclick="selectShift('night')">
+      <span class="shift-dot night-dot"></span> Night · 22:00–06:00
+    </button>
+  </div>
+
+  <!-- MAIN GRID -->
+  <div class="grid">
+
+    <!-- LEFT: CHECKLIST -->
+    <div>
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title"><span class="emoji">✅</span> Shift Checklist</div>
+          <div style="font-size:12px;color:var(--muted);font-weight:600;" id="shiftLabel">Morning Shift</div>
+        </div>
+        <div class="panel-body">
+
+          <!-- Stats -->
+          <div class="stats-row" id="statsRow"></div>
+
+          <!-- Progress -->
+          <div class="progress-wrap">
+            <div class="progress-label">
+              <span>Completion</span>
+              <span id="progressText">0%</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" id="progressFill" style="width:0%"></div>
+            </div>
+          </div>
+
+          <!-- Zone Tabs -->
+          <div class="zone-tabs" id="zoneTabs"></div>
+
+          <!-- Checklist Items -->
+          <div class="checklist" id="checklist"></div>
+
+          <!-- Add Task -->
+          <div class="add-task-row">
+            <input class="add-input" id="newTaskInput" type="text" placeholder="Add a task for this shift...">
+            <select id="newTaskZone" style="width:auto;flex-shrink:0;padding:9px 32px 9px 10px;font-size:12px;">
+              <option value="General">General</option>
+              <option value="Electrical">Electrical</option>
+              <option value="Plumbing">Plumbing</option>
+              <option value="HVAC">HVAC</option>
+              <option value="Security">Security</option>
+              <option value="Housekeeping">Housekeeping</option>
+            </select>
+            <button class="add-btn" onclick="addTask()">+ Add</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div class="right-col">
+
+      <!-- PENDING ISSUES CARRY-FORWARD -->
+      <div class="panel handover-panel">
+        <div class="panel-header">
+          <div class="panel-title"><span class="emoji">⚠️</span> Pending Issues</div>
+          <button class="mini-btn" onclick="openIssueModal()">+ Report</button>
+        </div>
+        <div class="panel-body">
+          <div class="issues-list" id="issuesList"></div>
+        </div>
+      </div>
+
+      <!-- SHIFT HANDOVER FORM -->
+      <div class="panel handover-panel">
+        <div class="panel-header">
+          <div class="panel-title"><span class="emoji">📋</span> Submit Handover</div>
+        </div>
+        <div class="panel-body">
+          <div class="handover-form">
+            <div>
+              <label class="form-label">Officer Name</label>
+              <input type="text" id="officerName" placeholder="Your name">
+            </div>
+            <div>
+              <label class="form-label">Handover To</label>
+              <input type="text" id="handoverTo" placeholder="Incoming officer name">
+            </div>
+            <div>
+              <label class="form-label">Overall Status</label>
+              <select id="overallStatus">
+                <option value="All Clear">✅ All Clear</option>
+                <option value="Minor Issues">⚠️ Minor Issues</option>
+                <option value="Critical Issue">🔴 Critical Issue — Attention Needed</option>
+              </select>
+            </div>
+            <div>
+              <label class="form-label">Handover Notes</label>
+              <textarea id="handoverNotes" rows="3" placeholder="Key observations, pending work, special instructions..."></textarea>
+            </div>
+            <button class="submit-btn" onclick="submitHandover()">
+              <span>🔁</span> Submit & Handover Shift
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- HANDOVER LOG -->
+      <div class="panel handover-panel">
+        <div class="panel-header">
+          <div class="panel-title"><span class="emoji">📜</span> Handover History</div>
+          <span style="font-size:11px;color:var(--muted)">Last 7 days</span>
+        </div>
+        <div class="panel-body" style="padding-top:10px;">
+          <div class="log-list" id="logList"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- TOAST CONTAINER -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ISSUE MODAL -->
+<div class="modal-bg" id="issueModal" style="display:none;">
+  <div class="modal">
+    <h2>⚠️ Report an Issue</h2>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div>
+        <label class="form-label">Issue Description</label>
+        <input type="text" id="issueDesc" placeholder="e.g. AC unit in Floor 3 not cooling">
+      </div>
+      <div>
+        <label class="form-label">Location</label>
+        <input type="text" id="issueLoc" placeholder="e.g. Block B, Floor 3">
+      </div>
+      <div>
+        <label class="form-label">Priority</label>
+        <select id="issuePriority">
+          <option value="high">🔴 High — Needs immediate attention</option>
+          <option value="medium">🟠 Medium — Fix within shift</option>
+          <option value="low">🟡 Low — Can be deferred</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="cancel-btn" onclick="closeModal()">Cancel</button>
+      <button class="confirm-btn" style="background:var(--warn);" onclick="addIssue()">Report Issue</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let currentShift = 'morning';
+let currentZone = 'All';
+
+const ZONES = ['All', 'General', 'Electrical', 'Plumbing', 'HVAC', 'Security', 'Housekeeping'];
+
+const defaultTasks = {
+  morning: [
+    { id: 1, name: 'Check all entry/exit gates & locks', zone: 'Security', priority: 'critical', done: false, issue: false },
+    { id: 2, name: 'Inspect fire extinguisher status', zone: 'Security', priority: 'safety', done: false, issue: false },
+    { id: 3, name: 'Test main electrical panel readings', zone: 'Electrical', priority: 'critical', done: false, issue: false },
+    { id: 4, name: 'Check HVAC units — all floors', zone: 'HVAC', priority: 'routine', done: false, issue: false },
+    { id: 5, name: 'Verify water supply pressure', zone: 'Plumbing', priority: 'routine', done: false, issue: false },
+    { id: 6, name: 'Common area cleanliness check', zone: 'Housekeeping', priority: 'routine', done: false, issue: false },
+    { id: 7, name: 'Lobby & reception area inspection', zone: 'General', priority: 'routine', done: false, issue: false },
+    { id: 8, name: 'Backup generator fuel check', zone: 'Electrical', priority: 'critical', done: false, issue: false },
+  ],
+  evening: [
+    { id: 9, name: 'Check evening access control log', zone: 'Security', priority: 'critical', done: false, issue: false },
+    { id: 10, name: 'Inspect cafeteria & kitchen shutoff', zone: 'General', priority: 'routine', done: false, issue: false },
+    { id: 11, name: 'Evening lighting walkthrough', zone: 'Electrical', priority: 'routine', done: false, issue: false },
+    { id: 12, name: 'Water heater system check', zone: 'Plumbing', priority: 'routine', done: false, issue: false },
+    { id: 13, name: 'Waste disposal collection check', zone: 'Housekeeping', priority: 'routine', done: false, issue: false },
+    { id: 14, name: 'Parking area inspection', zone: 'Security', priority: 'routine', done: false, issue: false },
+    { id: 15, name: 'Cooling tower level check', zone: 'HVAC', priority: 'safety', done: false, issue: false },
+  ],
+  night: [
+    { id: 16, name: 'Lock all non-essential areas', zone: 'Security', priority: 'critical', done: false, issue: false },
+    { id: 17, name: 'Night perimeter security rounds', zone: 'Security', priority: 'critical', done: false, issue: false },
+    { id: 18, name: 'Check server room temperature', zone: 'HVAC', priority: 'critical', done: false, issue: false },
+    { id: 19, name: 'Verify emergency lighting is active', zone: 'Electrical', priority: 'safety', done: false, issue: false },
+    { id: 20, name: 'DG set maintenance log', zone: 'Electrical', priority: 'routine', done: false, issue: false },
+    { id: 21, name: 'Night water tank levels', zone: 'Plumbing', priority: 'routine', done: false, issue: false },
+  ]
+};
+
+let tasks = JSON.parse(localStorage.getItem('shiftTasks')) || JSON.parse(JSON.stringify(defaultTasks));
+let issues = JSON.parse(localStorage.getItem('shiftIssues')) || [
+  { id: 1, desc: 'Lift B out of service — technician called', location: 'Block B', priority: 'high', resolved: false, time: '08:30', shift: 'morning', date: 'Today' },
+  { id: 2, desc: 'Parking lot light #4 flickering', location: 'Parking P2', priority: 'medium', resolved: false, time: 'Yesterday 14:20', shift: 'evening', date: 'Yesterday' },
+];
+let handoverLog = JSON.parse(localStorage.getItem('handoverLog')) || [
+  { id: 1, shift: 'morning', officer: 'Ravi Kumar', handoverTo: 'Suresh Nair', status: 'All Clear', notes: 'Smooth morning. Lift B issue reported and escalated. All checks complete except DG fuel (vendor called).', time: '13:58', date: 'Today', done: 12, pending: 1, issues: 1 },
+  { id: 2, shift: 'night', officer: 'Priya Menon', handoverTo: 'Ravi Kumar', status: 'Minor Issues', notes: 'Water pressure in Block A was low around 3AM — resolved by valve adjustment. Server room at 24°C, stable.', time: '05:50', date: 'Yesterday', done: 6, pending: 0, issues: 0 },
+];
+
+let taskIdCounter = 100;
+let issueIdCounter = 50;
+
+function save() {
+  localStorage.setItem('shiftTasks', JSON.stringify(tasks));
+  localStorage.setItem('shiftIssues', JSON.stringify(issues));
+  localStorage.setItem('handoverLog', JSON.stringify(handoverLog));
+}
+
+// ─── CLOCK ───────────────────────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  document.getElementById('liveTime').textContent = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+  document.getElementById('liveDate').textContent = now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ─── SHIFT ────────────────────────────────────────────────────────────────────
+function selectShift(shift) {
+  currentShift = shift;
+  document.querySelectorAll('.shift-btn').forEach(b => b.classList.toggle('active', b.dataset.shift === shift));
+  const labels = { morning: 'Morning Shift', evening: 'Evening Shift', night: 'Night Shift' };
+  document.getElementById('shiftLabel').textContent = labels[shift];
+  currentZone = 'All';
+  render();
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function render() {
+  renderStats();
+  renderZoneTabs();
+  renderChecklist();
+  renderIssues();
+  renderLog();
+}
+
+function renderStats() {
+  const t = tasks[currentShift] || [];
+  const done = t.filter(x => x.done).length;
+  const issueCount = t.filter(x => x.issue).length;
+  const pending = t.filter(x => !x.done && !x.issue).length;
+  const pct = t.length ? Math.round((done / t.length) * 100) : 0;
+
+  document.getElementById('statsRow').innerHTML = `
+    <div class="stat-card"><div class="stat-num green">${done}</div><div class="stat-label">Done</div></div>
+    <div class="stat-card"><div class="stat-num orange">${pending}</div><div class="stat-label">Pending</div></div>
+    <div class="stat-card"><div class="stat-num red">${issueCount}</div><div class="stat-label">Issues</div></div>
+  `;
+
+  const fill = document.getElementById('progressFill');
+  const txt = document.getElementById('progressText');
+  fill.style.width = pct + '%';
+  txt.textContent = pct + '%';
+  fill.className = 'progress-fill' + (pct < 40 ? ' danger' : pct < 75 ? ' warn' : '');
+}
+
+function renderZoneTabs() {
+  const container = document.getElementById('zoneTabs');
+  container.innerHTML = ZONES.map(z =>
+    `<button class="zone-tab ${z === currentZone ? 'active' : ''}" onclick="selectZone('${z}')">${z}</button>`
+  ).join('');
+}
+
+function selectZone(zone) {
+  currentZone = zone;
+  render();
+}
+
+function renderChecklist() {
+  const container = document.getElementById('checklist');
+  let t = tasks[currentShift] || [];
+  if (currentZone !== 'All') t = t.filter(x => x.zone === currentZone);
+
+  if (!t.length) {
+    container.innerHTML = `<div class="empty-state"><div class="icon">📭</div><p>No tasks for this zone.<br>Add one below!</p></div>`;
+    return;
+  }
+
+  container.innerHTML = t.map(task => `
+    <div class="check-item ${task.done ? 'done' : ''} ${task.issue ? 'issue' : ''}" onclick="toggleTask(${task.id})">
+      <div class="checkbox">
+        ${task.done ? `<svg width="12" height="10" viewBox="0 0 12 10" fill="none"><path d="M1 5l3.5 3.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>` : ''}
+        ${task.issue ? `<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 2v5M6 9v1" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>` : ''}
+      </div>
+      <div class="check-content">
+        <div class="check-name">${task.name}</div>
+        <div class="check-meta">${task.zone} zone</div>
+        <div class="check-actions" onclick="event.stopPropagation()">
+          <span class="tag ${task.priority}">${task.priority}</span>
+          ${!task.done ? `<button class="mini-btn" onclick="markDone(${task.id})">✓ Done</button>` : ''}
+          ${!task.issue && !task.done ? `<button class="mini-btn red" onclick="markIssue(${task.id})">⚠ Issue</button>` : ''}
+          <button class="mini-btn red" onclick="removeTask(${task.id})">✕</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderIssues() {
+  const container = document.getElementById('issuesList');
+  const active = issues.filter(i => !i.resolved);
+  const resolved = issues.filter(i => i.resolved).slice(0, 2);
+  const all = [...active, ...resolved];
+
+  if (!all.length) {
+    container.innerHTML = `<div class="empty-state"><div class="icon">✅</div><p>No pending issues. All clear!</p></div>`;
+    return;
+  }
+
+  container.innerHTML = all.map(issue => `
+    <div class="issue-card ${issue.resolved ? 'resolved' : ''} ${issue.priority === 'medium' ? 'medium' : ''}">
+      <div class="issue-header">
+        <div>
+          <div class="issue-title">${issue.resolved ? '✅ ' : ''}${issue.desc}</div>
+          <div class="issue-meta">📍 ${issue.location} · ${issue.time}</div>
+        </div>
+        ${!issue.resolved ? `<button class="resolve-btn" onclick="resolveIssue(${issue.id})">Resolve</button>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderLog() {
+  const container = document.getElementById('logList');
+  if (!handoverLog.length) {
+    container.innerHTML = `<div class="empty-state"><div class="icon">📋</div><p>No handovers logged yet.</p></div>`;
+    return;
+  }
+  container.innerHTML = handoverLog.slice().reverse().map(log => `
+    <div class="log-entry">
+      <div class="log-top">
+        <span class="log-shift-badge badge-${log.shift}">● ${log.shift.charAt(0).toUpperCase() + log.shift.slice(1)}</span>
+        <span class="log-time">${log.date} · ${log.time}</span>
+      </div>
+      <div class="log-officer">👤 ${log.officer} → ${log.handoverTo}</div>
+      <div class="log-notes">${log.notes}</div>
+      <div class="log-stats">
+        <span class="log-stat">✅ <strong>${log.done}</strong> done</span>
+        <span class="log-stat">⏳ <strong>${log.pending}</strong> pending</span>
+        <span class="log-stat">⚠️ <strong>${log.issues}</strong> issues</span>
+        <span class="log-stat" style="margin-left:auto;font-weight:600;color:${log.status === 'All Clear' ? 'var(--ok)' : log.status === 'Critical Issue' ? 'var(--danger)' : 'var(--warn)'};">${log.status}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ─── TASK ACTIONS ─────────────────────────────────────────────────────────────
+function toggleTask(id) {
+  const t = tasks[currentShift].find(x => x.id === id);
+  if (!t) return;
+  if (!t.done && !t.issue) markDone(id);
+  else { t.done = false; t.issue = false; }
+  save(); render();
+}
+
+function markDone(id) {
+  const t = tasks[currentShift].find(x => x.id === id);
+  if (t) { t.done = true; t.issue = false; }
+  save(); render();
+  toast('Task marked complete ✅', 'green');
+}
+
+function markIssue(id) {
+  const t = tasks[currentShift].find(x => x.id === id);
+  if (t) { t.issue = true; t.done = false; }
+  save(); render();
+  toast('Issue flagged ⚠️', 'orange');
+}
+
+function removeTask(id) {
+  tasks[currentShift] = tasks[currentShift].filter(x => x.id !== id);
+  save(); render();
+}
+
+function addTask() {
+  const input = document.getElementById('newTaskInput');
+  const zone = document.getElementById('newTaskZone').value;
+  const name = input.value.trim();
+  if (!name) return;
+  tasks[currentShift].push({ id: taskIdCounter++, name, zone, priority: 'routine', done: false, issue: false });
+  input.value = '';
+  save(); render();
+  toast('Task added!');
+}
+
+// ─── ISSUES ───────────────────────────────────────────────────────────────────
+function openIssueModal() { document.getElementById('issueModal').style.display = 'flex'; }
+function closeModal() { document.getElementById('issueModal').style.display = 'none'; }
+
+function addIssue() {
+  const desc = document.getElementById('issueDesc').value.trim();
+  const loc = document.getElementById('issueLoc').value.trim();
+  const priority = document.getElementById('issuePriority').value;
+  if (!desc) { toast('Please describe the issue'); return; }
+  const now = new Date();
+  issues.push({
+    id: issueIdCounter++, desc, location: loc || 'Unspecified', priority,
+    resolved: false, time: now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
+    shift: currentShift, date: 'Today'
+  });
+  document.getElementById('issueDesc').value = '';
+  document.getElementById('issueLoc').value = '';
+  closeModal(); save(); render();
+  toast('Issue reported ⚠️', 'orange');
+}
+
+function resolveIssue(id) {
+  const i = issues.find(x => x.id === id);
+  if (i) i.resolved = true;
+  save(); render();
+  toast('Issue resolved ✅', 'green');
+}
+
+// ─── HANDOVER ─────────────────────────────────────────────────────────────────
+function submitHandover() {
+  const officer = document.getElementById('officerName').value.trim();
+  const to = document.getElementById('handoverTo').value.trim();
+  const status = document.getElementById('overallStatus').value;
+  const notes = document.getElementById('handoverNotes').value.trim();
+  if (!officer || !notes) { toast('Please fill officer name and notes'); return; }
+
+  const t = tasks[currentShift] || [];
+  const done = t.filter(x => x.done).length;
+  const pending = t.filter(x => !x.done && !x.issue).length;
+  const issueCount = issues.filter(x => !x.resolved).length;
+  const now = new Date();
+
+  handoverLog.push({
+    id: Date.now(), shift: currentShift, officer, handoverTo: to || '—', status, notes,
+    time: now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
+    date: 'Today', done, pending, issues: issueCount
+  });
+
+  document.getElementById('officerName').value = '';
+  document.getElementById('handoverTo').value = '';
+  document.getElementById('handoverNotes').value = '';
+  save(); render();
+  toast('Handover submitted successfully 🔁', 'green');
+}
+
+// ─── TOAST ────────────────────────────────────────────────────────────────────
+function toast(msg, type = '') {
+  const c = document.getElementById('toastContainer');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  c.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+// ─── KEYBOARD ─────────────────────────────────────────────────────────────────
+document.getElementById('newTaskInput').addEventListener('keydown', e => { if (e.key === 'Enter') addTask(); });
+document.getElementById('issueModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+render();
+</script>
+</body>
+</html>
