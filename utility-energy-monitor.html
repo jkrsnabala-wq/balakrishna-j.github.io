@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GCS Energy Consumption Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root {
   --bg: #faf8ff;
@@ -397,7 +398,8 @@ input.valid   { border-color: var(--ok)     !important; box-shadow: 0 0 0 3px rg
     </div>
     <div class="header-right">
       <div class="live-badge"><div class="pulse"></div> Live</div>
-      <button onclick="openSettings()" style="display:flex;align-items:center;gap:6px;padding:7px 14px;border:1px solid var(--border2);border-radius:8px;background:none;color:var(--muted2);font-family:var(--head);font-size:12px;cursor:pointer;transition:all 0.15s;" onmouseover="this.style.color='var(--text)';this.style.borderColor='var(--text)'" onmouseout="this.style.color='var(--muted2)';this.style.borderColor='var(--border2)'">⚙ Rates</button>
+      <button onclick="openSettings()" style="display:flex;align-items:center;gap:6px;padding:7px 14px;border:1.5px solid var(--border2);border-radius:8px;background:none;color:var(--muted2);font-family:var(--head);font-size:12px;cursor:pointer;transition:all 0.15s;" onmouseover="this.style.color='var(--purple)';this.style.borderColor='var(--purple)'" onmouseout="this.style.color='var(--muted2)';this.style.borderColor='var(--border2)'">⚙ Rates</button>
+      <button onclick="exportExcel()" style="display:flex;align-items:center;gap:6px;padding:7px 14px;border:1.5px solid var(--orange);border-radius:8px;background:var(--dg-bg);color:var(--orange-dark);font-family:var(--head);font-size:12px;font-weight:700;cursor:pointer;transition:all 0.15s;" onmouseover="this.style.background='var(--orange)';this.style.color='white'" onmouseout="this.style.background='var(--dg-bg)';this.style.color='var(--orange-dark)'">📊 Sync to Excel</button>
       <div>
         <div id="clockDisplay">--:--</div>
         <div class="header-date" id="dateDisplay">Loading...</div>
@@ -775,6 +777,168 @@ function save() {
   localStorage.setItem('gwReadings', JSON.stringify(readings));
   localStorage.setItem('gwAlerts', JSON.stringify(alerts));
   localStorage.setItem('gwRates', JSON.stringify(RATES));
+  localStorage.setItem('gwAudit', JSON.stringify(auditLog));
+}
+
+// ── AUDIT LOG ────────────────────────────────────────────────────────────────
+let auditLog = JSON.parse(localStorage.getItem('gwAudit') || '[]');
+
+function auditEntry(action, util, entry, extra) {
+  auditLog.push({
+    timestamp: new Date().toISOString(),
+    action,       // 'ADD' | 'EDIT' | 'DELETE'
+    utility: util.charAt(0).toUpperCase() + util.slice(1),
+    date: entry.date || '',
+    meter: entry.meter ?? '',
+    consumption: entry.consumption ?? '',
+    unit: UNITS_LABEL[util],
+    cost: Math.round((entry.consumption ?? 0) * RATES[util]),
+    loggedBy: entry.loggedBy || '',
+    remarks: entry.remarks || '',
+    entryId: entry.id || '',
+    note: extra || ''
+  });
+}
+
+// ── EXPORT TO EXCEL (SheetJS) ────────────────────────────────────────────────
+function exportExcel(silent) {
+  const wb = XLSX.utils.book_new();
+  wb.Props = { Title: 'GCS Energy Consumption Dashboard', Author: 'GCS' };
+
+  const UTIL_META = {
+    electricity: { label: 'Electricity', unit: 'kWh',  color: 'FFF97316', tab: 'FFEA580C' },
+    water:       { label: 'Water',       unit: 'KL',   color: 'FF8B5CF6', tab: 'FF6D28D9' },
+    dg:          { label: 'DG Fuel',     unit: 'Ltrs', color: 'FFEA580C', tab: 'FFC2410C' }
+  };
+
+  const headerStyle = (hexColor) => ({
+    font: { bold: true, color: { rgb: 'FFFFFFFF' }, name: 'Arial', sz: 11 },
+    fill: { fgColor: { rgb: hexColor }, patternType: 'solid' },
+    alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+    border: { bottom: { style: 'thin', color: { rgb: 'FFD0D5E8' } } }
+  });
+
+  const dataStyle = (even) => ({
+    font: { name: 'Arial', sz: 10 },
+    fill: even ? { fgColor: { rgb: 'FFF5F3FF' }, patternType: 'solid' } : { fgColor: { rgb: 'FFFFFFFF' }, patternType: 'solid' },
+    alignment: { vertical: 'center' }
+  });
+
+  const numStyle = (even) => ({
+    font: { name: 'Arial', sz: 10, bold: true },
+    fill: even ? { fgColor: { rgb: 'FFF5F3FF' }, patternType: 'solid' } : { fgColor: { rgb: 'FFFFFFFF' }, patternType: 'solid' },
+    alignment: { horizontal: 'right', vertical: 'center' },
+    numFmt: '#,##0.0'
+  });
+
+  const currStyle = (even, hexColor) => ({
+    font: { name: 'Arial', sz: 10, bold: true, color: { rgb: hexColor } },
+    fill: even ? { fgColor: { rgb: 'FFF5F3FF' }, patternType: 'solid' } : { fgColor: { rgb: 'FFFFFFFF' }, patternType: 'solid' },
+    alignment: { horizontal: 'right', vertical: 'center' },
+    numFmt: '₹#,##0'
+  });
+
+  // ── Per-utility sheets ─────────────────────────────────────────────
+  ['electricity', 'water', 'dg'].forEach(util => {
+    const meta = UTIL_META[util];
+    const data = (readings[util] || []).slice().sort((a,b) => a.date.localeCompare(b.date));
+    const ws = {};
+    const cols = ['A','B','C','D','E','F','G','H'];
+
+    // Title row
+    ws['A1'] = { v: `GCS Energy Consumption Dashboard — ${meta.label}`, t: 's',
+      s: { font: { bold: true, name: 'Arial', sz: 13, color: { rgb: meta.tab } }, alignment: { horizontal: 'left' } } };
+    ws['A2'] = { v: `Generated: ${new Date().toLocaleString('en-IN')} | Rate: ₹${RATES[util]}/${meta.unit}`, t: 's',
+      s: { font: { name: 'Arial', sz: 9, color: { rgb: 'FF6B6FA8' } } } };
+
+    // Header row 4
+    const headers = ['#', 'Date', `Meter Reading (${meta.unit})`, `Consumption (${meta.unit})`, 'Cost (₹)', 'Status', 'Logged By', 'Remarks'];
+    headers.forEach((h, i) => {
+      ws[`${cols[i]}4`] = { v: h, t: 's', s: headerStyle(meta.color) };
+    });
+
+    // Data rows starting at row 5
+    data.forEach((r, idx) => {
+      const row = idx + 5;
+      const even = idx % 2 === 0;
+      const cost = Math.round(r.consumption * RATES[util]);
+      const status = r.meterReset ? 'METER RESET' : r.consumption === 0 ? 'First Entry' : 'Normal';
+      ws[`A${row}`] = { v: idx + 1,         t: 'n', s: dataStyle(even) };
+      ws[`B${row}`] = { v: r.date,           t: 's', s: dataStyle(even) };
+      ws[`C${row}`] = { v: r.meter,          t: 'n', s: numStyle(even) };
+      ws[`D${row}`] = { v: r.consumption,    t: 'n', s: numStyle(even) };
+      ws[`E${row}`] = { v: cost,             t: 'n', s: currStyle(even, meta.color) };
+      ws[`F${row}`] = { v: status,           t: 's', s: dataStyle(even) };
+      ws[`G${row}`] = { v: r.loggedBy || '', t: 's', s: dataStyle(even) };
+      ws[`H${row}`] = { v: r.remarks || '',  t: 's', s: dataStyle(even) };
+    });
+
+    // Totals row
+    const totalRow = data.length + 5;
+    const totalConsumption = data.reduce((s,r) => s + r.consumption, 0);
+    const totalCost = data.reduce((s,r) => s + Math.round(r.consumption * RATES[util]), 0);
+    const totStyle = { font: { bold: true, name: 'Arial', sz: 10, color: { rgb: meta.tab } },
+      fill: { fgColor: { rgb: 'FFEDE8FF' }, patternType: 'solid' }, alignment: { horizontal: 'right' } };
+    ws[`A${totalRow}`] = { v: 'TOTAL', t: 's', s: totStyle };
+    ws[`D${totalRow}`] = { v: totalConsumption, t: 'n', s: { ...totStyle, numFmt: '#,##0.0' } };
+    ws[`E${totalRow}`] = { v: totalCost,        t: 'n', s: { ...totStyle, numFmt: '₹#,##0' } };
+
+    ws['!ref'] = `A1:H${totalRow}`;
+    ws['!cols'] = [{ wch: 5 }, { wch: 12 }, { wch: 20 }, { wch: 20 }, { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 30 }];
+    ws['!rows'] = [{ hpt: 28 }, { hpt: 18 }, {}, { hpt: 22 }];
+    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 7 } }, { s: { r: 1, c: 0 }, e: { r: 1, c: 7 } }];
+
+    XLSX.utils.book_append_sheet(wb, ws, meta.label);
+  });
+
+  // ── Audit Log sheet ──────────────────────────────────────────────────
+  const aws = {};
+  aws['A1'] = { v: 'GCS Energy Dashboard — Audit Log (All Changes)', t: 's',
+    s: { font: { bold: true, name: 'Arial', sz: 13, color: { rgb: 'FF6D28D9' } } } };
+  aws['A2'] = { v: 'Original entries and all edits/deletions are preserved here permanently.', t: 's',
+    s: { font: { name: 'Arial', sz: 9, color: { rgb: 'FF6B6FA8' }, italic: true } } };
+
+  const auditHeaders = ['Timestamp', 'Action', 'Utility', 'Date', 'Meter Reading', 'Consumption', 'Unit', 'Cost (₹)', 'Logged By', 'Remarks', 'Note'];
+  const auditCols = ['A','B','C','D','E','F','G','H','I','J','K'];
+  auditHeaders.forEach((h, i) => {
+    aws[`${auditCols[i]}4`] = { v: h, t: 's', s: headerStyle('FF1E1B4B') };
+  });
+
+  const actionColors = { ADD: 'FF065F46', EDIT: 'FF1D4ED8', DELETE: 'FF991B1B' };
+  const actionBg     = { ADD: 'FFD1FAE5', EDIT: 'FFDBEAFE', DELETE: 'FFFEE2E2' };
+
+  auditLog.forEach((entry, idx) => {
+    const row = idx + 5;
+    const even = idx % 2 === 0;
+    const actionStyle = { font: { bold: true, name: 'Arial', sz: 10, color: { rgb: actionColors[entry.action] || 'FF000000' } },
+      fill: { fgColor: { rgb: actionBg[entry.action] || 'FFFFFFFF' }, patternType: 'solid' }, alignment: { horizontal: 'center' } };
+    const base = dataStyle(even);
+    aws[`A${row}`] = { v: new Date(entry.timestamp).toLocaleString('en-IN'), t: 's', s: base };
+    aws[`B${row}`] = { v: entry.action,      t: 's', s: actionStyle };
+    aws[`C${row}`] = { v: entry.utility,     t: 's', s: base };
+    aws[`D${row}`] = { v: entry.date,        t: 's', s: base };
+    aws[`E${row}`] = { v: entry.meter,       t: 'n', s: { ...base, numFmt: '#,##0.0' } };
+    aws[`F${row}`] = { v: entry.consumption, t: 'n', s: { ...base, numFmt: '#,##0.0' } };
+    aws[`G${row}`] = { v: entry.unit,        t: 's', s: base };
+    aws[`H${row}`] = { v: entry.cost,        t: 'n', s: { ...base, numFmt: '₹#,##0' } };
+    aws[`I${row}`] = { v: entry.loggedBy,    t: 's', s: base };
+    aws[`J${row}`] = { v: entry.remarks,     t: 's', s: base };
+    aws[`K${row}`] = { v: entry.note,        t: 's', s: base };
+  });
+
+  if (auditLog.length === 0) {
+    aws['A5'] = { v: 'No changes recorded yet.', t: 's', s: { font: { italic: true, color: { rgb: 'FF94A3B8' }, name: 'Arial', sz: 10 } } };
+  }
+
+  aws['!ref'] = `A1:K${Math.max(auditLog.length + 4, 5)}`;
+  aws['!cols'] = [{ wch: 22 }, { wch: 10 }, { wch: 14 }, { wch: 12 }, { wch: 16 }, { wch: 16 }, { wch: 8 }, { wch: 12 }, { wch: 16 }, { wch: 30 }, { wch: 30 }];
+  aws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 10 } }, { s: { r: 1, c: 0 }, e: { r: 1, c: 10 } }];
+  XLSX.utils.book_append_sheet(wb, aws, 'Audit Log');
+
+  // ── Download ──────────────────────────────────────────────────────────
+  const filename = `GCS_Energy_Dashboard_${new Date().toISOString().slice(0,10)}.xlsx`;
+  XLSX.writeFile(wb, filename);
+  if (!silent) toast('📊 Excel master file downloaded!', 'ok');
 }
 
 // ── CLOCK ────────────────────────────────────────────────────────────────────
@@ -1225,6 +1389,9 @@ function logReading() {
   document.getElementById('meterHint').textContent = '';
 
   save(); render();
+  const newEntry = readings[currentUtil][readings[currentUtil].length - 1];
+  auditEntry('ADD', currentUtil, readings[currentUtil].find(r => r.id === newEntry?.id) || { date, meter, consumption, loggedBy, remarks }, isReset ? 'Meter reset' : '');
+  exportExcel(true);
   toast(isReset ? `✅ Reading logged (meter reset)` : isAnomaly ? `⚠ Anomaly! ${consumption} ${UNITS_LABEL[currentUtil]}` : `✅ Logged — ${consumption} ${UNITS_LABEL[currentUtil]}`, isAnomaly ? 'danger' : 'ok');
 }
 
@@ -1288,7 +1455,10 @@ function saveEdit() {
   arr.sort((a, b) => a.date.localeCompare(b.date));
   recalcConsumptions(editTarget.util);
 
-  closeEdit(); save(); render();
+  closeEdit();
+  const edited = readings[editTarget.util].find(x => x.id === editTarget.id);
+  auditEntry('EDIT', editTarget.util, edited || { date: newDate, meter: newMeter }, 'Entry corrected');
+  save(); render(); exportExcel(true);
   toast('✅ Entry updated and consumption recalculated.', 'ok');
 }
 
@@ -1306,9 +1476,11 @@ function closeDelete() { document.getElementById('deleteModal').style.display = 
 
 function confirmDelete() {
   if (!deleteTarget) return;
+  const entry = readings[deleteTarget.util].find(x => x.id === deleteTarget.id);
+  auditEntry('DELETE', deleteTarget.util, entry || {}, 'Entry deleted by user');
   readings[deleteTarget.util] = readings[deleteTarget.util].filter(x => x.id !== deleteTarget.id);
   recalcConsumptions(deleteTarget.util);
-  closeDelete(); save(); render();
+  closeDelete(); save(); render(); exportExcel(true);
   toast('🗑 Entry deleted. Consumption recalculated.', 'warn');
 }
 
