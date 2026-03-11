@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GridWatch — Utility & Energy Monitor</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #080c10;
+  --surface: #0e1318;
+  --surface2: #141c24;
+  --surface3: #1a2530;
+  --border: #1e2d3d;
+  --border2: #243444;
+  --elec: #f0c040;
+  --water: #38c5f0;
+  --dg: #f07840;
+  --ok: #38f0a0;
+  --warn: #f0c040;
+  --danger: #f04060;
+  --text: #d8e8f0;
+  --muted: #4a6070;
+  --muted2: #6a8090;
+  --head: 'Space Mono', monospace;
+  --body: 'Lexend', sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg); color: var(--text); font-family: var(--body);
+  min-height: 100vh; overflow-x: hidden;
+}
+
+/* Grid background */
+body::before {
+  content: '';
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background-image:
+    linear-gradient(rgba(56,197,240,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(56,197,240,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.app { position: relative; z-index: 1; max-width: 1280px; margin: 0 auto; padding: 0 24px 60px; }
+
+/* ── HEADER ── */
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 28px 0 24px; border-bottom: 1px solid var(--border);
+  animation: fadeDown 0.5s ease both;
+}
+.brand { display: flex; flex-direction: column; gap: 4px; }
+.brand h1 {
+  font-family: var(--head); font-size: 24px; font-weight: 700;
+  letter-spacing: -1px; color: var(--text);
+}
+.brand h1 span { color: var(--elec); }
+.brand p { font-size: 11px; color: var(--muted2); letter-spacing: 2px; text-transform: uppercase; font-weight: 500; }
+.header-right { display: flex; align-items: center; gap: 20px; }
+.live-badge {
+  display: flex; align-items: center; gap: 6px; padding: 6px 14px;
+  border: 1px solid var(--border2); border-radius: 100px;
+  font-family: var(--head); font-size: 12px; color: var(--muted2);
+}
+.pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.3)} }
+#clockDisplay { font-family: var(--head); font-size: 13px; color: var(--text); }
+.header-date { font-size: 11px; color: var(--muted2); text-align: right; margin-top: 2px; }
+
+/* ── UTILITY SELECTOR ── */
+.utility-tabs {
+  display: flex; gap: 8px; margin: 24px 0 20px;
+  animation: fadeDown 0.4s 0.1s ease both;
+}
+.util-tab {
+  display: flex; align-items: center; gap: 8px; padding: 10px 20px;
+  border: 1px solid var(--border2); border-radius: 10px;
+  background: var(--surface); cursor: pointer; font-family: var(--body);
+  font-size: 13px; font-weight: 600; color: var(--muted2);
+  transition: all 0.2s;
+}
+.util-tab:hover { border-color: var(--border2); background: var(--surface2); color: var(--text); }
+.util-tab.active[data-util="electricity"] { border-color: var(--elec); background: rgba(240,192,64,0.08); color: var(--elec); }
+.util-tab.active[data-util="water"] { border-color: var(--water); background: rgba(56,197,240,0.08); color: var(--water); }
+.util-tab.active[data-util="dg"] { border-color: var(--dg); background: rgba(240,120,64,0.08); color: var(--dg); }
+.util-icon { font-size: 18px; }
+.util-tab .unit { font-size: 10px; opacity: 0.7; font-family: var(--head); margin-left: 2px; }
+
+/* ── KPI ROW ── */
+.kpi-row {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+  margin-bottom: 20px; animation: fadeUp 0.5s 0.15s ease both;
+}
+.kpi {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 18px 20px; position: relative; overflow: hidden;
+  transition: border-color 0.2s;
+}
+.kpi::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+}
+.kpi.elec::before { background: var(--elec); }
+.kpi.water::before { background: var(--water); }
+.kpi.dg::before { background: var(--dg); }
+.kpi.ok::before { background: var(--ok); }
+.kpi-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted2); font-weight: 600; margin-bottom: 10px; }
+.kpi-value { font-family: var(--head); font-size: 30px; font-weight: 700; line-height: 1; letter-spacing: -1px; }
+.kpi-value.elec { color: var(--elec); }
+.kpi-value.water { color: var(--water); }
+.kpi-value.dg { color: var(--dg); }
+.kpi-value.ok { color: var(--ok); }
+.kpi-unit { font-size: 12px; color: var(--muted2); margin-top: 6px; font-family: var(--head); }
+.kpi-delta {
+  display: inline-flex; align-items: center; gap: 4px; margin-top: 8px;
+  font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 100px;
+}
+.kpi-delta.up { background: rgba(240,64,96,0.15); color: var(--danger); }
+.kpi-delta.down { background: rgba(56,240,160,0.12); color: var(--ok); }
+.kpi-delta.same { background: rgba(106,128,144,0.15); color: var(--muted2); }
+
+/* ── MAIN GRID ── */
+.main-grid { display: grid; grid-template-columns: 1fr 340px; gap: 16px; }
+
+/* ── PANEL ── */
+.panel {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; overflow: hidden;
+  animation: fadeUp 0.5s 0.2s ease both;
+}
+.panel + .panel { animation-delay: 0.25s; }
+.panel-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px; border-bottom: 1px solid var(--border);
+  background: var(--surface2);
+}
+.panel-title { font-family: var(--head); font-size: 13px; color: var(--text); display: flex; align-items: center; gap: 8px; }
+.panel-title .dot { width: 6px; height: 6px; border-radius: 50%; }
+.dot-elec { background: var(--elec); }
+.dot-water { background: var(--water); }
+.dot-dg { background: var(--dg); }
+.dot-ok { background: var(--ok); }
+.panel-body { padding: 20px; }
+
+/* ── CHART ── */
+.chart-wrap { position: relative; height: 220px; margin-bottom: 8px; }
+.chart-canvas { width: 100%; height: 100%; }
+svg.chart { width: 100%; height: 100%; overflow: visible; }
+.chart-label { font-family: var(--head); font-size: 9px; fill: var(--muted); }
+.chart-grid-line { stroke: var(--border); stroke-width: 1; stroke-dasharray: 4,4; }
+.chart-line { fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.chart-area { opacity: 0.12; }
+.chart-dot { r: 4; cursor: pointer; transition: r 0.15s; }
+.chart-dot:hover { r: 6; }
+.anomaly-dot { r: 6; cursor: pointer; }
+
+/* ── READING ENTRY FORM ── */
+.reading-form { display: flex; flex-direction: column; gap: 12px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field label { font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted2); font-weight: 600; }
+input[type="number"], input[type="date"], input[type="text"], select, textarea {
+  padding: 9px 12px; background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 8px; font-family: var(--body); font-size: 13px; color: var(--text);
+  outline: none; transition: border 0.15s; width: 100%;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--water); }
+select { appearance: none; cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%234a6070' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; }
+input[type="number"]::-webkit-inner-spin-button { opacity: 0.4; }
+
+.anomaly-flag {
+  display: flex; align-items: center; gap: 8px; padding: 10px 14px;
+  background: rgba(240,64,96,0.08); border: 1px solid rgba(240,64,96,0.25);
+  border-radius: 8px; font-size: 12px; color: var(--danger);
+  font-weight: 500; display: none;
+}
+.anomaly-flag.show { display: flex; }
+
+.submit-btn {
+  width: 100%; padding: 11px; background: transparent;
+  border: 1px solid var(--border2); border-radius: 10px;
+  font-family: var(--head); font-size: 13px; font-weight: 700; cursor: pointer;
+  color: var(--text); transition: all 0.2s; display: flex; align-items: center;
+  justify-content: center; gap: 8px;
+}
+.submit-btn:hover { background: var(--surface3); border-color: var(--water); color: var(--water); }
+.submit-btn.electric:hover { border-color: var(--elec); color: var(--elec); }
+.submit-btn.dg:hover { border-color: var(--dg); color: var(--dg); }
+
+/* ── LOG TABLE ── */
+.log-table-wrap { overflow-x: auto; max-height: 320px; overflow-y: auto; }
+.log-table-wrap::-webkit-scrollbar { width: 4px; height: 4px; }
+.log-table-wrap::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 100px; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th {
+  font-family: var(--head); font-size: 10px; text-transform: uppercase; letter-spacing: 1px;
+  color: var(--muted2); padding: 8px 12px; text-align: left;
+  border-bottom: 1px solid var(--border); position: sticky; top: 0;
+  background: var(--surface2);
+}
+td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--surface2); }
+.mono { font-family: var(--head); font-size: 12px; }
+.anomaly-badge {
+  display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px;
+  border-radius: 100px; font-size: 10px; font-weight: 700;
+}
+.badge-warn { background: rgba(240,192,64,0.15); color: var(--warn); }
+.badge-danger { background: rgba(240,64,96,0.15); color: var(--danger); }
+.badge-ok { background: rgba(56,240,160,0.12); color: var(--ok); }
+.badge-dg { background: rgba(240,120,64,0.12); color: var(--dg); }
+
+/* ── ALERTS ── */
+.alert-list { display: flex; flex-direction: column; gap: 8px; }
+.alert-item {
+  display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px;
+  border-radius: 10px; border: 1px solid transparent;
+  animation: fadeUp 0.3s ease both;
+}
+.alert-item.high { background: rgba(240,64,96,0.07); border-color: rgba(240,64,96,0.2); }
+.alert-item.medium { background: rgba(240,192,64,0.07); border-color: rgba(240,192,64,0.2); }
+.alert-item.info { background: rgba(56,197,240,0.06); border-color: rgba(56,197,240,0.15); }
+.alert-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+.alert-content { flex: 1; }
+.alert-title { font-size: 13px; font-weight: 600; color: var(--text); }
+.alert-meta { font-size: 11px; color: var(--muted2); margin-top: 2px; }
+.dismiss-btn {
+  background: none; border: none; color: var(--muted); cursor: pointer;
+  font-size: 14px; padding: 2px; transition: color 0.15s; flex-shrink: 0;
+}
+.dismiss-btn:hover { color: var(--text); }
+
+/* ── COST PANEL ── */
+.cost-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.cost-card {
+  padding: 14px; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--surface2); text-align: center;
+}
+.cost-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted2); font-weight: 600; margin-bottom: 8px; }
+.cost-val { font-family: var(--head); font-size: 20px; font-weight: 700; }
+.cost-val.elec { color: var(--elec); }
+.cost-val.water { color: var(--water); }
+.cost-val.dg { color: var(--dg); }
+.cost-sub { font-size: 10px; color: var(--muted2); margin-top: 4px; font-family: var(--head); }
+
+/* ── RIGHT COL ── */
+.right-col { display: flex; flex-direction: column; gap: 16px; }
+
+/* ── TOAST ── */
+.toast-container { position: fixed; bottom: 24px; right: 24px; display: flex; flex-direction: column; gap: 8px; z-index: 1000; }
+.toast {
+  padding: 11px 16px; background: var(--surface3); color: var(--text);
+  border: 1px solid var(--border2); border-radius: 10px; font-size: 13px;
+  font-weight: 500; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  animation: slideIn 0.3s ease both; display: flex; align-items: center; gap: 8px; max-width: 300px;
+}
+.toast.ok { border-color: rgba(56,240,160,0.4); color: var(--ok); }
+.toast.warn { border-color: rgba(240,192,64,0.4); color: var(--warn); }
+.toast.danger { border-color: rgba(240,64,96,0.4); color: var(--danger); }
+
+/* ── MINI BAR CHART ── */
+.mini-bars { display: flex; align-items: flex-end; gap: 3px; height: 50px; margin-top: 10px; }
+.mini-bar {
+  flex: 1; border-radius: 3px 3px 0 0; min-height: 4px;
+  transition: height 0.5s cubic-bezier(0.34,1.56,0.64,1);
+  cursor: pointer; opacity: 0.8;
+}
+.mini-bar:hover { opacity: 1; }
+.mini-bar-label { display: flex; justify-content: space-between; margin-top: 4px; }
+.mini-bar-label span { font-size: 9px; color: var(--muted); font-family: var(--head); }
+
+/* ── SECTION LABEL ── */
+.section-sep {
+  font-family: var(--head); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 2px; color: var(--muted); margin: 20px 0 12px;
+  display: flex; align-items: center; gap: 10px;
+  animation: fadeDown 0.4s 0.05s ease both;
+}
+.section-sep::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+/* ── ANIM ── */
+@keyframes fadeDown { from { opacity:0; transform:translateY(-10px); } to { opacity:1; transform:none; } }
+@keyframes fadeUp   { from { opacity:0; transform:translateY(12px);  } to { opacity:1; transform:none; } }
+@keyframes slideIn  { from { opacity:0; transform:translateX(16px);  } to { opacity:1; transform:none; } }
+
+@media (max-width: 960px) { .main-grid { grid-template-columns: 1fr; } .kpi-row { grid-template-columns: repeat(2,1fr); } }
+@media (max-width: 560px) { .utility-tabs { flex-wrap: wrap; } .form-row { grid-template-columns: 1fr; } .cost-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <header>
+    <div class="brand">
+      <h1>Grid<span>Watch</span></h1>
+      <p>Utility &amp; Energy Consumption Monitor</p>
+    </div>
+    <div class="header-right">
+      <div class="live-badge"><div class="pulse"></div> Live</div>
+      <div>
+        <div id="clockDisplay">--:--</div>
+        <div class="header-date" id="dateDisplay">Loading...</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- UTILITY TABS -->
+  <div class="utility-tabs">
+    <button class="util-tab active" data-util="electricity" onclick="selectUtil('electricity')">
+      <span class="util-icon">⚡</span> Electricity <span class="unit">kWh</span>
+    </button>
+    <button class="util-tab" data-util="water" onclick="selectUtil('water')">
+      <span class="util-icon">💧</span> Water <span class="unit">KL</span>
+    </button>
+    <button class="util-tab" data-util="dg" onclick="selectUtil('dg')">
+      <span class="util-icon">🔋</span> DG Set <span class="unit">Ltrs</span>
+    </button>
+  </div>
+
+  <!-- KPI ROW -->
+  <div class="kpi-row" id="kpiRow"></div>
+
+  <!-- MAIN GRID -->
+  <div class="main-grid">
+
+    <!-- LEFT -->
+    <div style="display:flex;flex-direction:column;gap:16px;">
+
+      <!-- TREND CHART -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">
+            <span class="dot" id="chartDot"></span>
+            <span id="chartTitle">Electricity — 7-Day Trend</span>
+          </div>
+          <div style="display:flex;gap:6px;">
+            <button onclick="setRange(7)"  id="r7"  style="padding:4px 10px;border-radius:6px;border:1px solid var(--border2);background:var(--surface3);color:var(--text);font-size:11px;cursor:pointer;font-family:var(--head);">7D</button>
+            <button onclick="setRange(14)" id="r14" style="padding:4px 10px;border-radius:6px;border:1px solid var(--border2);background:var(--surface);color:var(--muted2);font-size:11px;cursor:pointer;font-family:var(--head);">14D</button>
+            <button onclick="setRange(30)" id="r30" style="padding:4px 10px;border-radius:6px;border:1px solid var(--border2);background:var(--surface);color:var(--muted2);font-size:11px;cursor:pointer;font-family:var(--head);">30D</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="chart-wrap">
+            <svg id="trendChart" class="chart"></svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- LOG TABLE -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title"><span class="dot dot-ok"></span> Reading Log</div>
+          <button onclick="exportCSV()" style="padding:5px 12px;border-radius:7px;border:1px solid var(--border2);background:none;color:var(--muted2);font-size:11px;cursor:pointer;font-family:var(--head);transition:all 0.15s;" onmouseover="this.style.color='var(--ok)'" onmouseout="this.style.color='var(--muted2)'">↓ Export CSV</button>
+        </div>
+        <div class="panel-body" style="padding:0;">
+          <div class="log-table-wrap">
+            <table id="logTable">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Meter Reading</th>
+                  <th>Consumption</th>
+                  <th>Cost (₹)</th>
+                  <th>Status</th>
+                  <th>Logged By</th>
+                </tr>
+              </thead>
+              <tbody id="logBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT COL -->
+    <div class="right-col">
+
+      <!-- LOG READING FORM -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title"><span class="dot" id="formDot"></span> <span id="formTitle">Log Meter Reading</span></div>
+        </div>
+        <div class="panel-body">
+          <div class="reading-form">
+            <div class="form-row">
+              <div class="field">
+                <label>Date</label>
+                <input type="date" id="readingDate">
+              </div>
+              <div class="field">
+                <label>Meter Reading</label>
+                <input type="number" id="meterReading" placeholder="e.g. 48230" step="0.1">
+              </div>
+            </div>
+            <div class="field">
+              <label>Logged By</label>
+              <input type="text" id="loggedBy" placeholder="Officer name">
+            </div>
+            <div class="field">
+              <label>Remarks (optional)</label>
+              <input type="text" id="remarks" placeholder="Any observations...">
+            </div>
+            <div class="anomaly-flag" id="anomalyFlag">
+              ⚠️ <span id="anomalyMsg">Unusually high consumption detected!</span>
+            </div>
+            <button class="submit-btn" id="submitBtn" onclick="logReading()">
+              <span id="submitIcon">⚡</span> Log Reading
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- COST SUMMARY -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title"><span class="dot dot-ok"></span> Monthly Cost Est.</div>
+          <span style="font-size:10px;color:var(--muted2);font-family:var(--head);" id="costMonth">MAR 2026</span>
+        </div>
+        <div class="panel-body">
+          <div class="cost-grid">
+            <div class="cost-card">
+              <div class="cost-label">⚡ Electricity</div>
+              <div class="cost-val elec" id="costElec">₹0</div>
+              <div class="cost-sub" id="costElecUnit">0 kWh</div>
+            </div>
+            <div class="cost-card">
+              <div class="cost-label">💧 Water</div>
+              <div class="cost-val water" id="costWater">₹0</div>
+              <div class="cost-sub" id="costWaterUnit">0 KL</div>
+            </div>
+            <div class="cost-card">
+              <div class="cost-label">🔋 DG Fuel</div>
+              <div class="cost-val dg" id="costDG">₹0</div>
+              <div class="cost-sub" id="costDGUnit">0 L</div>
+            </div>
+          </div>
+          <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:12px;color:var(--muted2);font-weight:600;">Total Estimated</span>
+            <span style="font-family:var(--head);font-size:22px;font-weight:700;color:var(--text);" id="costTotal">₹0</span>
+          </div>
+          <div class="mini-bars" id="miniBars"></div>
+          <div class="mini-bar-label"><span>Electricity</span><span>Water</span><span>DG</span></div>
+        </div>
+      </div>
+
+      <!-- ALERTS -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title"><span class="dot" style="background:var(--danger);"></span> Alerts</div>
+          <span style="font-size:11px;color:var(--muted2);" id="alertCount">0 active</span>
+        </div>
+        <div class="panel-body">
+          <div class="alert-list" id="alertList"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ── STATE ────────────────────────────────────────────────────────────────────
+let currentUtil = 'electricity';
+let chartRange = 7;
+
+const RATES = { electricity: 8.5, water: 45, dg: 92 }; // ₹ per unit
+const UNITS_LABEL = { electricity: 'kWh', water: 'KL', dg: 'L' };
+const UTIL_COLORS = { electricity: '#f0c040', water: '#38c5f0', dg: '#f07840' };
+const ANOMALY_THRESHOLD = 1.5; // 50% above average
+
+// Seed data — last 30 days
+function seedData() {
+  const today = new Date();
+  const data = { electricity: [], water: [], dg: [] };
+
+  // electricity base: ~420 kWh/day cumulative meter
+  let eMeter = 45000;
+  let wMeter = 8000;
+  let dgMeter = 3000;
+
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(today); d.setDate(d.getDate() - i);
+    const ds = d.toISOString().split('T')[0];
+
+    const eConsume = 380 + Math.random() * 120 + (i % 7 === 0 ? 200 : 0); // spike on sundays
+    eMeter += eConsume;
+    data.electricity.push({ date: ds, meter: Math.round(eMeter * 10) / 10, consumption: Math.round(eConsume * 10) / 10, loggedBy: ['Ravi K.','Suresh N.','Priya M.'][i % 3], remarks: i % 7 === 0 ? 'Weekend spike observed' : '' });
+
+    const wConsume = 18 + Math.random() * 8;
+    wMeter += wConsume;
+    data.water.push({ date: ds, meter: Math.round(wMeter * 10) / 10, consumption: Math.round(wConsume * 10) / 10, loggedBy: ['Ravi K.','Suresh N.','Priya M.'][i % 3], remarks: '' });
+
+    const dgConsume = i % 5 === 0 ? 80 + Math.random() * 40 : 0; // DG runs occasionally
+    dgMeter += dgConsume;
+    data.dg.push({ date: ds, meter: Math.round(dgMeter * 10) / 10, consumption: Math.round(dgConsume * 10) / 10, loggedBy: ['Ravi K.','Suresh N.','Priya M.'][i % 3], remarks: dgConsume > 0 ? 'DG run — power outage' : 'No DG usage' });
+  }
+  return data;
+}
+
+let readings = JSON.parse(localStorage.getItem('gwReadings')) || seedData();
+let alerts = JSON.parse(localStorage.getItem('gwAlerts')) || [
+  { id: 1, type: 'high', title: 'Electricity spike on Sunday', meta: 'Consumption was 58% above weekly avg · Mar 09', dismissed: false },
+  { id: 2, type: 'medium', title: 'Water consumption trending up', meta: '12% increase vs last 7 days · Mar 10', dismissed: false },
+  { id: 3, type: 'info', title: 'DG run detected — 3 hrs', meta: 'Grid outage logged · Mar 07 · 96L consumed', dismissed: false },
+];
+
+function save() {
+  localStorage.setItem('gwReadings', JSON.stringify(readings));
+  localStorage.setItem('gwAlerts', JSON.stringify(alerts));
+}
+
+// ── CLOCK ────────────────────────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clockDisplay').textContent = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+  document.getElementById('dateDisplay').textContent = now.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  document.getElementById('costMonth').textContent = now.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }).toUpperCase();
+}
+setInterval(updateClock, 1000); updateClock();
+
+// ── UTILITY SELECT ────────────────────────────────────────────────────────────
+function selectUtil(util) {
+  currentUtil = util;
+  document.querySelectorAll('.util-tab').forEach(t => t.classList.toggle('active', t.dataset.util === util));
+  render();
+}
+
+function setRange(r) {
+  chartRange = r;
+  ['r7','r14','r30'].forEach(id => {
+    const el = document.getElementById(id);
+    el.style.background = id === 'r'+r ? 'var(--surface3)' : 'var(--surface)';
+    el.style.color = id === 'r'+r ? 'var(--text)' : 'var(--muted2)';
+  });
+  drawChart();
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+function render() {
+  updateFormUI();
+  renderKPIs();
+  drawChart();
+  renderLog();
+  renderCosts();
+  renderAlerts();
+}
+
+function updateFormUI() {
+  const icons = { electricity: '⚡', water: '💧', dg: '🔋' };
+  const colors = { electricity: 'dot-elec', water: 'dot-water', dg: 'dot-dg' };
+  document.getElementById('formDot').className = 'dot ' + colors[currentUtil];
+  document.getElementById('chartDot').className = 'dot ' + colors[currentUtil];
+  document.getElementById('formTitle').textContent = `Log ${currentUtil.charAt(0).toUpperCase()+currentUtil.slice(1)} Reading`;
+  document.getElementById('chartTitle').textContent = `${currentUtil.charAt(0).toUpperCase()+currentUtil.slice(1)} — ${chartRange}-Day Trend`;
+  document.getElementById('submitIcon').textContent = icons[currentUtil];
+  document.getElementById('meterReading').placeholder = `Current meter (${UNITS_LABEL[currentUtil]})`;
+}
+
+function renderKPIs() {
+  const data = readings[currentUtil] || [];
+  const today = data[data.length - 1];
+  const yesterday = data[data.length - 2];
+  const week = data.slice(-7);
+  const prevWeek = data.slice(-14, -7);
+
+  const todayConsume = today?.consumption || 0;
+  const yesterdayConsume = yesterday?.consumption || 0;
+  const weekTotal = week.reduce((s, r) => s + (r.consumption || 0), 0);
+  const prevWeekTotal = prevWeek.reduce((s, r) => s + (r.consumption || 0), 0);
+  const weekAvg = weekTotal / Math.max(week.length, 1);
+  const deltaPct = prevWeekTotal ? Math.round(((weekTotal - prevWeekTotal) / prevWeekTotal) * 100) : 0;
+  const monthlyCost = Math.round(weekTotal * (30/7) * RATES[currentUtil]);
+
+  const deltaClass = deltaPct > 5 ? 'up' : deltaPct < -5 ? 'down' : 'same';
+  const deltaLabel = deltaPct > 0 ? `▲ ${deltaPct}% vs prev week` : deltaPct < 0 ? `▼ ${Math.abs(deltaPct)}% vs prev week` : '→ Stable';
+
+  document.getElementById('kpiRow').innerHTML = `
+    <div class="kpi ${currentUtil === 'electricity' ? 'elec' : currentUtil === 'water' ? 'water' : 'dg'}">
+      <div class="kpi-label">Today's Consumption</div>
+      <div class="kpi-value ${currentUtil === 'electricity' ? 'elec' : currentUtil === 'water' ? 'water' : 'dg'}">${todayConsume.toFixed(1)}</div>
+      <div class="kpi-unit">${UNITS_LABEL[currentUtil]} consumed</div>
+    </div>
+    <div class="kpi ok">
+      <div class="kpi-label">7-Day Total</div>
+      <div class="kpi-value ok">${weekTotal.toFixed(0)}</div>
+      <div class="kpi-unit">${UNITS_LABEL[currentUtil]} this week</div>
+      <div class="kpi-delta ${deltaClass}">${deltaLabel}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Daily Average</div>
+      <div class="kpi-value" style="color:var(--text);">${weekAvg.toFixed(1)}</div>
+      <div class="kpi-unit">${UNITS_LABEL[currentUtil]}/day (7-day avg)</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Est. Monthly Cost</div>
+      <div class="kpi-value" style="color:var(--text);">₹${(monthlyCost).toLocaleString('en-IN')}</div>
+      <div class="kpi-unit">@ ₹${RATES[currentUtil]}/${UNITS_LABEL[currentUtil]}</div>
+    </div>
+  `;
+}
+
+// ── CHART ─────────────────────────────────────────────────────────────────────
+function drawChart() {
+  const data = (readings[currentUtil] || []).slice(-chartRange);
+  const svg = document.getElementById('trendChart');
+  const W = svg.parentElement.offsetWidth || 600;
+  const H = 220;
+  const pad = { top: 20, right: 20, bottom: 30, left: 50 };
+  const iW = W - pad.left - pad.right;
+  const iH = H - pad.top - pad.bottom;
+
+  const values = data.map(d => d.consumption);
+  const maxV = Math.max(...values) * 1.15 || 100;
+  const minV = 0;
+  const avg = values.reduce((a, b) => a + b, 0) / Math.max(values.length, 1);
+  const color = UTIL_COLORS[currentUtil];
+
+  const xScale = i => pad.left + (i / (data.length - 1)) * iW;
+  const yScale = v => pad.top + iH - ((v - minV) / (maxV - minV)) * iH;
+
+  // Build path
+  const pts = data.map((d, i) => `${xScale(i)},${yScale(d.consumption)}`);
+  const linePath = 'M ' + pts.join(' L ');
+  const areaPath = `M ${xScale(0)},${yScale(0)} L ${pts.join(' L ')} L ${xScale(data.length-1)},${yScale(0)} Z`;
+
+  // Y-axis labels
+  const yTicks = [0, 0.25, 0.5, 0.75, 1].map(t => minV + t * (maxV - minV));
+
+  let svgContent = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+  svgContent += `<defs>
+    <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${color}" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+    </linearGradient>
+  </defs>`;
+
+  // Grid lines
+  yTicks.forEach(t => {
+    const y = yScale(t);
+    svgContent += `<line x1="${pad.left}" y1="${y}" x2="${W - pad.right}" y2="${y}" class="chart-grid-line"/>`;
+    svgContent += `<text x="${pad.left - 6}" y="${y + 4}" class="chart-label" text-anchor="end">${Math.round(t)}</text>`;
+  });
+
+  // X labels — show every N
+  const step = Math.max(1, Math.floor(data.length / 6));
+  data.forEach((d, i) => {
+    if (i % step === 0 || i === data.length - 1) {
+      const label = new Date(d.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+      svgContent += `<text x="${xScale(i)}" y="${H - 4}" class="chart-label" text-anchor="middle">${label}</text>`;
+    }
+  });
+
+  // Average line
+  const avgY = yScale(avg);
+  svgContent += `<line x1="${pad.left}" y1="${avgY}" x2="${W-pad.right}" y2="${avgY}" stroke="${color}" stroke-width="1" stroke-dasharray="6,4" opacity="0.35"/>`;
+  svgContent += `<text x="${W-pad.right+4}" y="${avgY+4}" class="chart-label" fill="${color}" opacity="0.7">avg</text>`;
+
+  // Area + Line
+  svgContent += `<path d="${areaPath}" fill="url(#areaGrad)"/>`;
+  svgContent += `<path d="${linePath}" class="chart-line" stroke="${color}"/>`;
+
+  // Dots — highlight anomalies
+  data.forEach((d, i) => {
+    const isAnomaly = d.consumption > avg * ANOMALY_THRESHOLD;
+    const cx = xScale(i), cy = yScale(d.consumption);
+    if (isAnomaly) {
+      svgContent += `<circle cx="${cx}" cy="${cy}" r="6" fill="${color}" opacity="0.25"/>`;
+      svgContent += `<circle cx="${cx}" cy="${cy}" r="4" fill="${color}" stroke="var(--danger)" stroke-width="2" class="anomaly-dot">
+        <title>⚠ ANOMALY: ${d.consumption} ${UNITS_LABEL[currentUtil]} on ${d.date}</title></circle>`;
+    } else {
+      svgContent += `<circle cx="${cx}" cy="${cy}" r="3.5" fill="${color}" class="chart-dot">
+        <title>${d.date}: ${d.consumption} ${UNITS_LABEL[currentUtil]}</title></circle>`;
+    }
+  });
+
+  svgContent += '</svg>';
+  svg.outerHTML; // not needed, just replace innerHTML of parent
+  svg.parentElement.innerHTML = svgContent;
+}
+
+// ── LOG TABLE ─────────────────────────────────────────────────────────────────
+function renderLog() {
+  const data = [...(readings[currentUtil] || [])].reverse().slice(0, 20);
+  const avg = (readings[currentUtil] || []).slice(-14).reduce((s,r) => s + r.consumption, 0) / 14;
+  const tbody = document.getElementById('logBody');
+
+  tbody.innerHTML = data.map(r => {
+    const isAnomaly = r.consumption > avg * ANOMALY_THRESHOLD && r.consumption > 0;
+    const isHigh = r.consumption > avg * 1.2 && r.consumption > 0 && !isAnomaly;
+    const cost = Math.round(r.consumption * RATES[currentUtil]);
+    const label = new Date(r.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' });
+
+    return `<tr>
+      <td class="mono">${label}</td>
+      <td class="mono">${r.meter.toLocaleString('en-IN')}</td>
+      <td class="mono" style="color:${isAnomaly ? 'var(--danger)' : isHigh ? 'var(--warn)' : 'var(--ok)'};">${r.consumption} ${UNITS_LABEL[currentUtil]}</td>
+      <td class="mono">₹${cost.toLocaleString('en-IN')}</td>
+      <td>${isAnomaly ? '<span class="anomaly-badge badge-danger">⚠ Spike</span>' : isHigh ? '<span class="anomaly-badge badge-warn">↑ High</span>' : r.consumption === 0 ? '<span class="anomaly-badge badge-dg">Zero</span>' : '<span class="anomaly-badge badge-ok">Normal</span>'}</td>
+      <td style="color:var(--muted2);font-size:12px;">${r.loggedBy}${r.remarks ? ' · <em style="opacity:0.6;">' + r.remarks + '</em>' : ''}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── COSTS ─────────────────────────────────────────────────────────────────────
+function renderCosts() {
+  // This month's data
+  const now = new Date();
+  const monthStr = now.toISOString().slice(0, 7);
+  const calcMonthly = util => {
+    const d = (readings[util] || []).filter(r => r.date.startsWith(monthStr));
+    return d.reduce((s, r) => s + r.consumption, 0);
+  };
+
+  const eTotal = calcMonthly('electricity');
+  const wTotal = calcMonthly('water');
+  const dgTotal = calcMonthly('dg');
+  const eCost = Math.round(eTotal * RATES.electricity);
+  const wCost = Math.round(wTotal * RATES.water);
+  const dgCost = Math.round(dgTotal * RATES.dg);
+  const total = eCost + wCost + dgCost;
+
+  document.getElementById('costElec').textContent = '₹' + eCost.toLocaleString('en-IN');
+  document.getElementById('costWater').textContent = '₹' + wCost.toLocaleString('en-IN');
+  document.getElementById('costDG').textContent = '₹' + dgCost.toLocaleString('en-IN');
+  document.getElementById('costTotal').textContent = '₹' + total.toLocaleString('en-IN');
+  document.getElementById('costElecUnit').textContent = Math.round(eTotal) + ' kWh';
+  document.getElementById('costWaterUnit').textContent = Math.round(wTotal) + ' KL';
+  document.getElementById('costDGUnit').textContent = Math.round(dgTotal) + ' L';
+
+  // Mini bars
+  const maxCost = Math.max(eCost, wCost, dgCost, 1);
+  document.getElementById('miniBars').innerHTML = `
+    <div class="mini-bar" style="height:${(eCost/maxCost)*50}px;background:var(--elec);flex:2;" title="₹${eCost.toLocaleString('en-IN')}"></div>
+    <div class="mini-bar" style="height:${(wCost/maxCost)*50}px;background:var(--water);flex:1;" title="₹${wCost.toLocaleString('en-IN')}"></div>
+    <div class="mini-bar" style="height:${(dgCost/maxCost)*50}px;background:var(--dg);flex:1;" title="₹${dgCost.toLocaleString('en-IN')}"></div>
+  `;
+}
+
+// ── ALERTS ────────────────────────────────────────────────────────────────────
+function renderAlerts() {
+  const active = alerts.filter(a => !a.dismissed);
+  document.getElementById('alertCount').textContent = active.length + ' active';
+  const container = document.getElementById('alertList');
+  if (!active.length) {
+    container.innerHTML = `<div style="text-align:center;padding:24px;color:var(--muted2);font-size:13px;">✅ No active alerts</div>`;
+    return;
+  }
+  container.innerHTML = active.map(a => `
+    <div class="alert-item ${a.type}">
+      <div class="alert-icon">${a.type === 'high' ? '🔴' : a.type === 'medium' ? '🟠' : 'ℹ️'}</div>
+      <div class="alert-content">
+        <div class="alert-title">${a.title}</div>
+        <div class="alert-meta">${a.meta}</div>
+      </div>
+      <button class="dismiss-btn" onclick="dismissAlert(${a.id})">✕</button>
+    </div>
+  `).join('');
+}
+
+function dismissAlert(id) {
+  const a = alerts.find(x => x.id === id);
+  if (a) a.dismissed = true;
+  save(); renderAlerts();
+}
+
+// ── LOG READING ───────────────────────────────────────────────────────────────
+function logReading() {
+  const date = document.getElementById('readingDate').value;
+  const meter = parseFloat(document.getElementById('meterReading').value);
+  const loggedBy = document.getElementById('loggedBy').value.trim() || 'Unknown';
+  const remarks = document.getElementById('remarks').value.trim();
+
+  if (!date || isNaN(meter)) { toast('Please fill date and meter reading', 'warn'); return; }
+
+  const data = readings[currentUtil] || [];
+  const prev = [...data].sort((a, b) => a.date.localeCompare(b.date)).slice(-1)[0];
+  const consumption = prev ? Math.max(0, Math.round((meter - prev.meter) * 10) / 10) : 0;
+  const avg7 = data.slice(-7).reduce((s,r) => s + r.consumption, 0) / 7;
+
+  // Anomaly detection
+  const isAnomaly = consumption > avg7 * ANOMALY_THRESHOLD && avg7 > 0;
+  const flag = document.getElementById('anomalyFlag');
+  if (isAnomaly) {
+    flag.classList.add('show');
+    document.getElementById('anomalyMsg').textContent = `Spike detected! ${consumption} ${UNITS_LABEL[currentUtil]} is ${Math.round((consumption/avg7-1)*100)}% above 7-day avg.`;
+    alerts.push({ id: Date.now(), type: 'high', title: `${currentUtil.charAt(0).toUpperCase()+currentUtil.slice(1)} spike on ${new Date(date).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}`, meta: `Consumption ${consumption} ${UNITS_LABEL[currentUtil]} — ${Math.round((consumption/avg7-1)*100)}% above avg`, dismissed: false });
+  } else {
+    flag.classList.remove('show');
+  }
+
+  readings[currentUtil].push({ date, meter, consumption, loggedBy, remarks });
+  readings[currentUtil].sort((a, b) => a.date.localeCompare(b.date));
+
+  // Reset form
+  document.getElementById('meterReading').value = '';
+  document.getElementById('remarks').value = '';
+
+  save(); render();
+  toast(isAnomaly ? `⚠ Anomaly logged! ${consumption} ${UNITS_LABEL[currentUtil]}` : `✅ Reading logged — ${consumption} ${UNITS_LABEL[currentUtil]}`, isAnomaly ? 'danger' : 'ok');
+}
+
+// ── EXPORT CSV ────────────────────────────────────────────────────────────────
+function exportCSV() {
+  const data = readings[currentUtil] || [];
+  const headers = ['Date', 'Meter Reading', 'Consumption', `Unit (${UNITS_LABEL[currentUtil]})`, 'Cost (INR)', 'Logged By', 'Remarks'];
+  const rows = data.map(r => [r.date, r.meter, r.consumption, UNITS_LABEL[currentUtil], Math.round(r.consumption * RATES[currentUtil]), r.loggedBy, r.remarks || '']);
+  const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `${currentUtil}-readings-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  toast('CSV exported ✓', 'ok');
+}
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+function toast(msg, type = '') {
+  const c = document.getElementById('toastContainer');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  c.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+document.getElementById('readingDate').value = new Date().toISOString().split('T')[0];
+window.addEventListener('resize', drawChart);
+render();
+</script>
+</body>
+</html>
