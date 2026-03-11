@@ -248,19 +248,24 @@ tr:hover td { background: var(--surface2); }
 .dismiss-btn:hover { color: var(--danger); }
 
 /* ── COST PANEL ── */
-.cost-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.cost-grid { display: flex; flex-direction: column; gap: 8px; }
 .cost-card {
-  padding: 14px; border-radius: 12px; border: 1.5px solid var(--border);
-  background: var(--surface2); text-align: center;
+  padding: 12px 16px; border-radius: 12px; border: 1.5px solid var(--border);
+  background: var(--surface2); display: flex; align-items: center; justify-content: space-between;
   transition: all 0.2s;
 }
-.cost-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
-.cost-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted2); font-weight: 700; margin-bottom: 8px; }
-.cost-val { font-family: var(--head); font-size: 20px; font-weight: 700; }
-.cost-val.elec { color: var(--elec); }
+.cost-card:hover { transform: translateX(3px); box-shadow: 0 3px 10px rgba(0,0,0,0.06); }
+.cost-card-left { display: flex; align-items: center; gap: 10px; }
+.cost-card-icon { font-size: 20px; }
+.cost-card-info { display: flex; flex-direction: column; gap: 1px; }
+.cost-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted2); font-weight: 700; }
+.cost-sub { font-size: 11px; color: var(--muted2); font-family: var(--head); }
+.cost-card-right { text-align: right; }
+.cost-val { font-family: var(--head); font-size: 18px; font-weight: 700; white-space: nowrap; }
+.cost-val.elec  { color: var(--elec);  }
 .cost-val.water { color: var(--water); }
-.cost-val.dg { color: var(--dg); }
-.cost-sub { font-size: 10px; color: var(--muted2); margin-top: 4px; font-family: var(--head); }
+.cost-val.dg    { color: var(--dg);    }
+.cost-rate { font-size: 10px; color: var(--muted2); margin-top: 2px; font-family: var(--head); }
 
 /* ── ALERTS ── */
 .alert-list { display: flex; flex-direction: column; gap: 8px; }
@@ -534,23 +539,44 @@ input.valid   { border-color: var(--ok)     !important; box-shadow: 0 0 0 3px rg
         </div>
         <div class="panel-body">
           <div class="cost-grid">
-            <div class="cost-card">
-              <div class="cost-label">⚡ Electricity</div>
-              <div class="cost-val elec" id="costElec">₹0</div>
-              <div class="cost-sub" id="costElecUnit">0 kWh</div>
-              <div style="font-size:10px;color:var(--muted);margin-top:4px;font-family:var(--head);" id="rateDisplayElec"></div>
+            <div class="cost-card" style="border-left: 3px solid var(--elec);">
+              <div class="cost-card-left">
+                <div class="cost-card-icon">⚡</div>
+                <div class="cost-card-info">
+                  <div class="cost-label">Electricity</div>
+                  <div class="cost-sub" id="costElecUnit">0 kWh</div>
+                  <div class="cost-sub" id="rateDisplayElec"></div>
+                </div>
+              </div>
+              <div class="cost-card-right">
+                <div class="cost-val elec" id="costElec">₹0</div>
+              </div>
             </div>
-            <div class="cost-card">
-              <div class="cost-label">💧 Water</div>
-              <div class="cost-val water" id="costWater">₹0</div>
-              <div class="cost-sub" id="costWaterUnit">0 KL</div>
-              <div style="font-size:10px;color:var(--muted);margin-top:4px;font-family:var(--head);" id="rateDisplayWater"></div>
+            <div class="cost-card" style="border-left: 3px solid var(--water);">
+              <div class="cost-card-left">
+                <div class="cost-card-icon">💧</div>
+                <div class="cost-card-info">
+                  <div class="cost-label">Water</div>
+                  <div class="cost-sub" id="costWaterUnit">0 KL</div>
+                  <div class="cost-sub" id="rateDisplayWater"></div>
+                </div>
+              </div>
+              <div class="cost-card-right">
+                <div class="cost-val water" id="costWater">₹0</div>
+              </div>
             </div>
-            <div class="cost-card">
-              <div class="cost-label">🔋 DG Fuel</div>
-              <div class="cost-val dg" id="costDG">₹0</div>
-              <div class="cost-sub" id="costDGUnit">0 L</div>
-              <div style="font-size:10px;color:var(--muted);margin-top:4px;font-family:var(--head);" id="rateDisplayDG"></div>
+            <div class="cost-card" style="border-left: 3px solid var(--dg);">
+              <div class="cost-card-left">
+                <div class="cost-card-icon">🔋</div>
+                <div class="cost-card-info">
+                  <div class="cost-label">DG Fuel</div>
+                  <div class="cost-sub" id="costDGUnit">0 L</div>
+                  <div class="cost-sub" id="rateDisplayDG"></div>
+                </div>
+              </div>
+              <div class="cost-card-right">
+                <div class="cost-val dg" id="costDG">₹0</div>
+              </div>
             </div>
           </div>
           <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
