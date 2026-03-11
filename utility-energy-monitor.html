@@ -642,22 +642,29 @@ function seedData() {
     const d = new Date(today); d.setDate(d.getDate() - i);
     const ds = d.toISOString().split('T')[0];
 
-    const eConsume = 380 + Math.random() * 120 + (i % 7 === 0 ? 200 : 0); // spike on sundays
+    const eConsume = 380 + Math.random() * 120 + (i % 7 === 0 ? 200 : 0);
     eMeter += eConsume;
-    data.electricity.push({ date: ds, meter: Math.round(eMeter * 10) / 10, consumption: Math.round(eConsume * 10) / 10, loggedBy: ['Ravi K.','Suresh N.','Priya M.'][i % 3], remarks: i % 7 === 0 ? 'Weekend spike observed' : '' });
+    data.electricity.push({ id: `e-seed-${i}`, date: ds, meter: Math.round(eMeter * 10) / 10, consumption: Math.round(eConsume * 10) / 10, loggedBy: ['Ravi K.','Suresh N.','Priya M.'][i % 3], remarks: i % 7 === 0 ? 'Weekend spike observed' : '' });
 
     const wConsume = 18 + Math.random() * 8;
     wMeter += wConsume;
-    data.water.push({ date: ds, meter: Math.round(wMeter * 10) / 10, consumption: Math.round(wConsume * 10) / 10, loggedBy: ['Ravi K.','Suresh N.','Priya M.'][i % 3], remarks: '' });
+    data.water.push({ id: `w-seed-${i}`, date: ds, meter: Math.round(wMeter * 10) / 10, consumption: Math.round(wConsume * 10) / 10, loggedBy: ['Ravi K.','Suresh N.','Priya M.'][i % 3], remarks: '' });
 
-    const dgConsume = i % 5 === 0 ? 80 + Math.random() * 40 : 0; // DG runs occasionally
+    const dgConsume = i % 5 === 0 ? 80 + Math.random() * 40 : 0;
     dgMeter += dgConsume;
-    data.dg.push({ date: ds, meter: Math.round(dgMeter * 10) / 10, consumption: Math.round(dgConsume * 10) / 10, loggedBy: ['Ravi K.','Suresh N.','Priya M.'][i % 3], remarks: dgConsume > 0 ? 'DG run — power outage' : 'No DG usage' });
+    data.dg.push({ id: `dg-seed-${i}`, date: ds, meter: Math.round(dgMeter * 10) / 10, consumption: Math.round(dgConsume * 10) / 10, loggedBy: ['Ravi K.','Suresh N.','Priya M.'][i % 3], remarks: dgConsume > 0 ? 'DG run — power outage' : 'No DG usage' });
   }
   return data;
 }
 
 let readings = JSON.parse(localStorage.getItem('gwReadings')) || seedData();
+
+// ── Migrate old entries that have no id ──
+['electricity','water','dg'].forEach(util => {
+  (readings[util] || []).forEach((r, i) => {
+    if (!r.id) r.id = `${util}-migrated-${i}-${r.date}`;
+  });
+});
 let alerts = JSON.parse(localStorage.getItem('gwAlerts')) || [
   { id: 1, type: 'high', title: 'Electricity spike on Sunday', meta: 'Consumption was 58% above weekly avg · Mar 09', dismissed: false },
   { id: 2, type: 'medium', title: 'Water consumption trending up', meta: '12% increase vs last 7 days · Mar 10', dismissed: false },
@@ -865,8 +872,8 @@ function renderLog() {
       <td style="color:var(--muted2);font-size:12px;">${r.loggedBy}${r.remarks ? ' · <em style="opacity:0.6;">' + r.remarks + '</em>' : ''}</td>
       <td>
         <div class="row-actions">
-          <button class="row-btn edit" onclick="openEdit('${currentUtil}','${r.date}')">✏ Edit</button>
-          <button class="row-btn del"  onclick="openDelete('${currentUtil}','${r.date}')">🗑 Del</button>
+          <button class="row-btn edit" onclick="openEdit('${currentUtil}','${r.id}')">✏ Edit</button>
+          <button class="row-btn del"  onclick="openDelete('${currentUtil}','${r.id}')">🗑 Del</button>
         </div>
       </td>
     </tr>`;
@@ -1052,7 +1059,7 @@ function logReading() {
     flag.classList.remove('show');
   }
 
-  readings[currentUtil].push({ date, meter, consumption, loggedBy, remarks, meterReset: isReset });
+  readings[currentUtil].push({ id: `${currentUtil}-${Date.now()}`, date, meter, consumption, loggedBy, remarks, meterReset: isReset });
   readings[currentUtil].sort((a, b) => a.date.localeCompare(b.date));
   recalcConsumptions(currentUtil);
 
@@ -1080,17 +1087,17 @@ function recalcConsumptions(util) {
 }
 
 // ── EDIT ──────────────────────────────────────────────────────────────────────
-let editTarget = null; // { util, date }
+let editTarget = null; // { util, id }
 
-function openEdit(util, date) {
-  const r = readings[util].find(x => x.date === date);
+function openEdit(util, id) {
+  const r = readings[util].find(x => x.id === id);
   if (!r) return;
-  editTarget = { util, date };
+  editTarget = { util, id };
   document.getElementById('editDate').value = r.date;
   document.getElementById('editMeter').value = r.meter;
   document.getElementById('editLoggedBy').value = r.loggedBy || '';
   document.getElementById('editRemarks').value = r.remarks || '';
-  document.getElementById('editModalSub').textContent = `Correcting entry for ${new Date(date).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})} · ${util.charAt(0).toUpperCase()+util.slice(1)}`;
+  document.getElementById('editModalSub').textContent = `Correcting entry for ${new Date(r.date).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})} · ${util.charAt(0).toUpperCase()+util.slice(1)}`;
   document.getElementById('editMeterErr').classList.remove('show');
   document.getElementById('editModal').style.display = 'flex';
 }
@@ -1103,7 +1110,6 @@ function saveEdit() {
   const newDate  = document.getElementById('editDate').value;
   const errEl    = document.getElementById('editMeterErr');
 
-  // Validate
   if (isNaN(newMeter) || document.getElementById('editMeter').value.trim() === '') {
     errEl.textContent = '⛔ Enter a valid number — no text allowed.';
     errEl.classList.add('show');
@@ -1118,7 +1124,7 @@ function saveEdit() {
   errEl.classList.remove('show');
 
   const arr = readings[editTarget.util];
-  const idx = arr.findIndex(x => x.date === editTarget.date);
+  const idx = arr.findIndex(x => x.id === editTarget.id);
   if (idx === -1) return;
 
   arr[idx].meter    = newMeter;
@@ -1135,10 +1141,10 @@ function saveEdit() {
 // ── DELETE ────────────────────────────────────────────────────────────────────
 let deleteTarget = null;
 
-function openDelete(util, date) {
-  deleteTarget = { util, date };
-  const r = readings[util].find(x => x.date === date);
-  document.getElementById('deleteModalSub').textContent = `Entry: ${new Date(date).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})} · Meter ${r?.meter} · ${util}`;
+function openDelete(util, id) {
+  deleteTarget = { util, id };
+  const r = readings[util].find(x => x.id === id);
+  document.getElementById('deleteModalSub').textContent = `Entry: ${new Date(r.date).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})} · Meter ${r?.meter} · ${util}`;
   document.getElementById('deleteModal').style.display = 'flex';
 }
 
@@ -1146,7 +1152,7 @@ function closeDelete() { document.getElementById('deleteModal').style.display = 
 
 function confirmDelete() {
   if (!deleteTarget) return;
-  readings[deleteTarget.util] = readings[deleteTarget.util].filter(x => x.date !== deleteTarget.date);
+  readings[deleteTarget.util] = readings[deleteTarget.util].filter(x => x.id !== deleteTarget.id);
   recalcConsumptions(deleteTarget.util);
   closeDelete(); save(); render();
   toast('🗑 Entry deleted. Consumption recalculated.', 'warn');
