@@ -780,9 +780,14 @@ function setRange(r) {
   chartRange = r;
   ['r7','r14','r30'].forEach(id => {
     const el = document.getElementById(id);
-    el.style.background = id === 'r'+r ? 'var(--surface3)' : 'var(--surface)';
-    el.style.color = id === 'r'+r ? 'var(--text)' : 'var(--muted2)';
+    if (!el) return;
+    const active = id === 'r' + r;
+    el.style.background = active ? 'var(--text)' : 'var(--surface)';
+    el.style.color = active ? 'white' : 'var(--muted2)';
+    el.style.borderColor = active ? 'var(--text)' : 'var(--border2)';
   });
+  document.getElementById('chartTitle').textContent =
+    `${currentUtil.charAt(0).toUpperCase() + currentUtil.slice(1)} — ${r}-Day Trend`;
   drawChart();
 }
 
@@ -852,13 +857,16 @@ function renderKPIs() {
 
 // ── CHART ─────────────────────────────────────────────────────────────────────
 function drawChart() {
+  const wrap = document.querySelector('.chart-wrap');
+  if (!wrap) return;
   const data = (readings[currentUtil] || []).slice(-chartRange);
-  const svg = document.getElementById('trendChart');
-  const W = svg.parentElement.offsetWidth || 600;
+  const W = wrap.offsetWidth || 600;
   const H = 220;
-  const pad = { top: 20, right: 20, bottom: 30, left: 50 };
+  const pad = { top: 20, right: 28, bottom: 30, left: 50 };
   const iW = W - pad.left - pad.right;
   const iH = H - pad.top - pad.bottom;
+
+  if (!data.length) { wrap.innerHTML = '<p style="text-align:center;padding:40px;color:var(--muted2);">No data yet</p>'; return; }
 
   const values = data.map(d => d.consumption);
   const maxV = Math.max(...values) * 1.15 || 100;
@@ -866,67 +874,60 @@ function drawChart() {
   const avg = values.reduce((a, b) => a + b, 0) / Math.max(values.length, 1);
   const color = UTIL_COLORS[currentUtil];
 
-  const xScale = i => pad.left + (i / (data.length - 1)) * iW;
+  const xScale = i => data.length === 1 ? pad.left + iW / 2 : pad.left + (i / (data.length - 1)) * iW;
   const yScale = v => pad.top + iH - ((v - minV) / (maxV - minV)) * iH;
 
-  // Build path
   const pts = data.map((d, i) => `${xScale(i)},${yScale(d.consumption)}`);
   const linePath = 'M ' + pts.join(' L ');
-  const areaPath = `M ${xScale(0)},${yScale(0)} L ${pts.join(' L ')} L ${xScale(data.length-1)},${yScale(0)} Z`;
+  const areaPath = `M ${xScale(0)},${pad.top + iH} L ${pts.join(' L ')} L ${xScale(data.length - 1)},${pad.top + iH} Z`;
 
-  // Y-axis labels
   const yTicks = [0, 0.25, 0.5, 0.75, 1].map(t => minV + t * (maxV - minV));
 
-  let svgContent = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
-  svgContent += `<defs>
-    <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="${color}" stop-opacity="0.3"/>
-      <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
-    </linearGradient>
-  </defs>`;
+  let s = `<svg id="trendChart" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;overflow:visible;">`;
+  s += `<defs><linearGradient id="areaGrad${currentUtil}" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="${color}" stop-opacity="0.25"/>
+    <stop offset="100%" stop-color="${color}" stop-opacity="0.02"/>
+  </linearGradient></defs>`;
 
-  // Grid lines
+  // Grid + Y labels
   yTicks.forEach(t => {
     const y = yScale(t);
-    svgContent += `<line x1="${pad.left}" y1="${y}" x2="${W - pad.right}" y2="${y}" class="chart-grid-line"/>`;
-    svgContent += `<text x="${pad.left - 6}" y="${y + 4}" class="chart-label" text-anchor="end">${Math.round(t)}</text>`;
+    s += `<line x1="${pad.left}" y1="${y}" x2="${W - pad.right}" y2="${y}" stroke="var(--border)" stroke-width="1" stroke-dasharray="4,4"/>`;
+    s += `<text x="${pad.left - 6}" y="${y + 4}" font-family="Space Mono,monospace" font-size="9" fill="var(--muted2)" text-anchor="end">${Math.round(t)}</text>`;
   });
 
-  // X labels — show every N
-  const step = Math.max(1, Math.floor(data.length / 6));
+  // X labels
+  const step = Math.max(1, Math.floor(data.length / 7));
   data.forEach((d, i) => {
     if (i % step === 0 || i === data.length - 1) {
       const label = new Date(d.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-      svgContent += `<text x="${xScale(i)}" y="${H - 4}" class="chart-label" text-anchor="middle">${label}</text>`;
+      s += `<text x="${xScale(i)}" y="${H - 4}" font-family="Space Mono,monospace" font-size="9" fill="var(--muted2)" text-anchor="middle">${label}</text>`;
     }
   });
 
   // Average line
   const avgY = yScale(avg);
-  svgContent += `<line x1="${pad.left}" y1="${avgY}" x2="${W-pad.right}" y2="${avgY}" stroke="${color}" stroke-width="1" stroke-dasharray="6,4" opacity="0.35"/>`;
-  svgContent += `<text x="${W-pad.right+4}" y="${avgY+4}" class="chart-label" fill="${color}" opacity="0.7">avg</text>`;
+  s += `<line x1="${pad.left}" y1="${avgY}" x2="${W - pad.right}" y2="${avgY}" stroke="${color}" stroke-width="1.5" stroke-dasharray="6,4" opacity="0.4"/>`;
+  s += `<text x="${W - pad.right + 4}" y="${avgY + 4}" font-family="Space Mono,monospace" font-size="9" fill="${color}" opacity="0.7">avg</text>`;
 
-  // Area + Line
-  svgContent += `<path d="${areaPath}" fill="url(#areaGrad)"/>`;
-  svgContent += `<path d="${linePath}" class="chart-line" stroke="${color}"/>`;
+  // Area fill + line
+  s += `<path d="${areaPath}" fill="url(#areaGrad${currentUtil})"/>`;
+  s += `<path d="${linePath}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>`;
 
-  // Dots — highlight anomalies
+  // Dots
   data.forEach((d, i) => {
-    const isAnomaly = d.consumption > avg * ANOMALY_THRESHOLD;
+    const isAnomaly = d.consumption > avg * ANOMALY_THRESHOLD && avg > 0;
     const cx = xScale(i), cy = yScale(d.consumption);
     if (isAnomaly) {
-      svgContent += `<circle cx="${cx}" cy="${cy}" r="6" fill="${color}" opacity="0.25"/>`;
-      svgContent += `<circle cx="${cx}" cy="${cy}" r="4" fill="${color}" stroke="var(--danger)" stroke-width="2" class="anomaly-dot">
-        <title>⚠ ANOMALY: ${d.consumption} ${UNITS_LABEL[currentUtil]} on ${d.date}</title></circle>`;
+      s += `<circle cx="${cx}" cy="${cy}" r="6" fill="${color}" opacity="0.2"/>`;
+      s += `<circle cx="${cx}" cy="${cy}" r="4" fill="${color}" stroke="#ef4444" stroke-width="2"><title>⚠ ${d.consumption} ${UNITS_LABEL[currentUtil]} on ${d.date}</title></circle>`;
     } else {
-      svgContent += `<circle cx="${cx}" cy="${cy}" r="3.5" fill="${color}" class="chart-dot">
-        <title>${d.date}: ${d.consumption} ${UNITS_LABEL[currentUtil]}</title></circle>`;
+      s += `<circle cx="${cx}" cy="${cy}" r="3.5" fill="${color}"><title>${d.date}: ${d.consumption} ${UNITS_LABEL[currentUtil]}</title></circle>`;
     }
   });
 
-  svgContent += '</svg>';
-  svg.outerHTML; // not needed, just replace innerHTML of parent
-  svg.parentElement.innerHTML = svgContent;
+  s += '</svg>';
+  wrap.innerHTML = s;
 }
 
 // ── LOG TABLE ─────────────────────────────────────────────────────────────────
